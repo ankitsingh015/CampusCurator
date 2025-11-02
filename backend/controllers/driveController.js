@@ -10,7 +10,7 @@ exports.createDrive = async (req, res, next) => {
       ...driveData
     } = req.body;
 
-    req.body.createdBy = req.user.id;
+    driveData.createdBy = req.user.id;
 
     // Convert student emails to ObjectIds if provided
     if (participatingStudentEmails && participatingStudentEmails.length > 0) {
