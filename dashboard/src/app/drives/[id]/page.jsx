@@ -140,7 +140,7 @@ export default function DriveDetail({ params }) {
             <div className="space-y-8 mb-8">
               {/* Formed Groups */}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">📋 Formed Groups ({(driveGroups || []).length})</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Formed Groups ({(driveGroups || []).length})</h2>
                 {(driveGroups || []).length === 0 ? (
                   <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-yellow-800">No groups formed yet</p>
@@ -154,10 +154,10 @@ export default function DriveDetail({ params }) {
                             <div className="flex-1">
                               <h3 className="font-bold text-lg text-gray-900">Group {idx + 1}: {g.name}</h3>
                               <div className="mt-2 space-y-1">
-                                <p className="text-sm text-gray-600">👥 Members: <span className="font-semibold">{(g.members?.length || 0) + 1}/{drive.maxGroupSize}</span></p>
-                                <p className="text-sm text-gray-600">👤 Leader: <span className="font-semibold">{g.leader?.name || g.leaderName || 'Unknown'}</span></p>
-                                <p className="text-sm text-gray-600">📍 Status: <span className={`font-semibold ${g.assignedMentor ? 'text-green-600' : 'text-yellow-600'}`}>{g.assignedMentor ? '✓ Mentor Assigned' : '⏳ Awaiting Mentor'}</span></p>
-                                {g.assignedMentor && <p className="text-sm text-gray-600">🎓 Mentor: <span className="font-semibold">{g.assignedMentor?.name || 'N/A'}</span></p>}
+                                <p className="text-sm text-gray-600">Members: <span className="font-semibold">{(g.members?.length || 0) + 1}/{drive.maxGroupSize}</span></p>
+                                <p className="text-sm text-gray-600">Leader: <span className="font-semibold">{g.leader?.name || g.leaderName || 'Unknown'}</span></p>
+                                <p className="text-sm text-gray-600">Status: <span className={`font-semibold ${g.assignedMentor ? 'text-green-600' : 'text-yellow-600'}`}>{g.assignedMentor ? 'Mentor Assigned' : 'Awaiting Mentor'}</span></p>
+                                {g.assignedMentor && <p className="text-sm text-gray-600">Mentor: <span className="font-semibold">{g.assignedMentor?.name || 'N/A'}</span></p>}
                               </div>
                               <div className="mt-3 pt-3 border-t border-gray-200">
                                 <p className="text-xs text-gray-600 font-semibold mb-2">Members:</p>
@@ -189,7 +189,7 @@ export default function DriveDetail({ params }) {
               {/* Remaining Students */}
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900">👨‍🎓 Remaining Students ({(remainingStudents || []).length})</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Remaining Students ({(remainingStudents || []).length})</h2>
                   {(remainingStudents || []).length > 0 && (
                     <Button variant="primary" onClick={() => {
                       api.post(`/groups/auto-group/${id}`, { body: {} })
@@ -200,13 +200,13 @@ export default function DriveDetail({ params }) {
                         })
                         .catch(err => alert('Error: ' + (err.message || 'Failed to auto-group')));
                     }}>
-                      🔄 Auto-Group Remaining
+                      Auto-Group Remaining
                     </Button>
                   )}
                 </div>
                 {(remainingStudents || []).length === 0 ? (
                   <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-green-800 font-medium">✅ All students have been grouped!</p>
+                    <p className="text-green-800 font-medium">All students have been grouped!</p>
                   </div>
                 ) : (
                   <Card>
@@ -267,7 +267,7 @@ export default function DriveDetail({ params }) {
 
               {/* Existing Groups for Students */}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">📚 Existing Groups</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Existing Groups</h2>
                 {(driveGroups || []).length === 0 ? (
                   <p className="text-gray-500">No groups yet. Create one or join an existing group!</p>
                 ) : (

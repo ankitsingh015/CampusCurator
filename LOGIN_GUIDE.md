@@ -1,50 +1,50 @@
-# 🎯 CampusCurator - Login & System Status
+# Mini Project Management System - Login & System Status
 
-## ✅ System Components Status
+## System Components Status
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| **Backend API** | ✅ Running | http://localhost:5000/api |
-| **Frontend UI** | ✅ Running | http://localhost:3000 |
-| **Database** | ✅ Connected | MongoDB Atlas |
-| **Demo Data** | ✅ Seeded | 15 users, 3 groups, FIFO allotment |
-| **Authentication** | ✅ Working | JWT tokens configured |
+| **Backend API** | Running | http://localhost:5000/api |
+| **Frontend UI** | Running | http://localhost:3000 |
+| **Database** | Connected | MongoDB Atlas |
+| **Demo Data** | Seeded | 15 users, 3 groups, FIFO allotment |
+| **Authentication** | Working | JWT tokens configured |
 
 ---
 
-## 🔑 LOGIN CREDENTIALS
+## LOGIN CREDENTIALS
 
 ### Admin Account
 ```
-Email:    admin@campuscurator.com
+Email:    admin@miniproject.com
 Password: admin123
 ```
-**After login → Redirects to: http://localhost:3000/admin/dashboard**
+**After login -> Redirects to: http://localhost:3000/admin/dashboard**
 
 ### Mentor Account
 ```
-Email:    john.smith@campuscurator.com
+Email:    john.smith@miniproject.com
 Password: mentor123
 ```
-**After login → Redirects to: http://localhost:3000/mentor/dashboard**
+**After login -> Redirects to: http://localhost:3000/mentor/dashboard**
 
 ### Student Account
 ```
 Email:    alice.w@student.com
 Password: student123
 ```
-**After login → Redirects to: http://localhost:3000/students/dashboard**
+**After login -> Redirects to: http://localhost:3000/students/dashboard**
 
 ---
 
-## 🚀 HOW TO LOGIN
+## HOW TO LOGIN
 
 ### Step 1: Open Login Page
 Go to: **http://localhost:3000/auth/login**
 
 ### Step 2: Enter Credentials
 ```
-Email:    admin@campuscurator.com
+Email:    admin@miniproject.com
 Password: admin123
 ```
 
@@ -61,7 +61,7 @@ You'll be redirected to: **http://localhost:3000/admin/dashboard**
 
 ---
 
-## 📊 WHAT YOU'LL SEE IN ADMIN DASHBOARD
+## WHAT YOU'LL SEE IN ADMIN DASHBOARD
 
 After successful login as admin, you'll see:
 
@@ -75,7 +75,7 @@ After successful login as admin, you'll see:
 
 ### Drives Section
 ```
-📋 Mini Project 2025 - Semester 6
+Mini Project 2025 - Semester 6
    Status: active
    Batches: 2025
    Stage: Group Formation
@@ -89,7 +89,7 @@ After successful login as admin, you'll see:
 
 ---
 
-## 🎯 MENTOR ALLOTMENT DETAILS
+## MENTOR ALLOTMENT DETAILS
 
 To see the FIFO mentor allotment results:
 
@@ -100,30 +100,30 @@ To see the FIFO mentor allotment results:
 5. You'll see:
 
 ```
-📌 MENTOR ALLOTMENT (FIFO - Timestamp-Based)
+MENTOR ALLOTMENT (FIFO - Timestamp-Based)
 
 Team Alpha (created 08:00 AM)
 ├─ Members: Alice Williams, Bob Martinez, Charlie Davis
-├─ 1st Preference: Dr. John Smith ✅ ASSIGNED
+├─ 1st Preference: Dr. John Smith [ASSIGNED]
 ├─ 2nd Preference: Dr. Sarah Johnson
 └─ 3rd Preference: Prof. Michael Brown
 
 Team Beta (created 08:15 AM)
 ├─ Members: Diana Garcia, Eve Rodriguez
-├─ 1st Preference: Dr. Sarah Johnson ✅ ASSIGNED
+├─ 1st Preference: Dr. Sarah Johnson [ASSIGNED]
 ├─ 2nd Preference: Prof. Michael Brown
 └─ 3rd Preference: Dr. John Smith
 
 Team Gamma (created 08:30 AM)
 ├─ Members: Frank Wilson, Grace Lee, Henry Chen
-├─ 1st Preference: Prof. Michael Brown ✅ ASSIGNED
+├─ 1st Preference: Prof. Michael Brown [ASSIGNED]
 ├─ 2nd Preference: Dr. John Smith
 └─ 3rd Preference: Prof. Lisa Anderson
 ```
 
 ---
 
-## 🔍 TROUBLESHOOTING
+## TROUBLESHOOTING
 
 ### If You Can't Login
 
@@ -171,16 +171,16 @@ npm run dev
 
 ---
 
-## 🧪 TESTING THE COMPLETE FLOW
+## TESTING THE COMPLETE FLOW
 
 ### As Admin:
-1. Login with `admin@campuscurator.com / admin123`
+1. Login with `admin@miniproject.com / admin123`
 2. See all drives and statistics
 3. Click drive to see groups and allotment
 4. Create new drive (optional)
 
 ### As Mentor:
-1. Login with `john.smith@campuscurator.com / mentor123`
+1. Login with `john.smith@miniproject.com / mentor123`
 2. See "My Assigned Groups" → Team Alpha
 3. View members and synopses
 4. Click "Reviews" to see pending tasks
@@ -196,7 +196,7 @@ npm run dev
 
 ---
 
-## 📁 FILES TO REFERENCE
+## FILES TO REFERENCE
 
 - **Login Page**: `/dashboard/src/app/auth/login/page.jsx`
 - **Auth Logic**: `/dashboard/src/lib/auth.js`
@@ -207,14 +207,14 @@ npm run dev
 
 ---
 
-## ✨ EVERYTHING WORKING?
+## EVERYTHING WORKING?
 
-✅ **Backend API Responding**  
-✅ **Frontend Loading**  
-✅ **Login Page Rendering**  
-✅ **Demo Data Seeded**  
-✅ **FIFO Allotment Complete**  
+[WORKING]  Backend API Responding  
+[WORKING]  Frontend Loading  
+[WORKING]  Login Page Rendering  
+[WORKING]  Demo Data Seeded  
+[WORKING]  FIFO Allotment Complete  
 
-### Ready to explore! 🚀
+### Ready to explore!
 
 Go to: **http://localhost:3000/auth/login**

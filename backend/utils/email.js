@@ -13,7 +13,7 @@ const sendEmail = async (options) => {
   try {
     const transporter = createTransporter();
     const message = {
-      from: `${process.env.EMAIL_FROM_NAME || 'CampusCurator'} <${process.env.EMAIL_USER}>`,
+      from: `${process.env.EMAIL_FROM_NAME || 'Mini Project Management System'} <${process.env.EMAIL_USER}>`,
       to: options.email,
       subject: options.subject,
       text: options.message,
@@ -28,9 +28,9 @@ const sendEmail = async (options) => {
 };
 const emailTemplates = {
   welcome: (name) => ({
-    subject: 'Welcome to CampusCurator',
-    message: `Hello ${name},\n\nWelcome to CampusCurator! Your account has been created successfully.`,
-    html: `<h1>Welcome to CampusCurator</h1><p>Hello ${name},</p><p>Your account has been created successfully.</p>`
+    subject: 'Welcome to Mini Project Management System',
+    message: `Hello ${name},\n\nWelcome to Mini Project Management System! Your account has been created successfully.`,
+    html: `<h1>Welcome to Mini Project Management System</h1><p>Hello ${name},</p><p>Your account has been created successfully.</p>`
   }),
   driveCreated: (driveName, deadline) => ({
     subject: `New Project Drive: ${driveName}`,

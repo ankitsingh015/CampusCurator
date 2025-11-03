@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CampusCurator Database Seeder
+ * Mini Project Management System Database Seeder
  * Seeds sample users (admin, mentors, students) for testing
  */
 
@@ -13,4 +13,4 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 // Import the seeder from database folder
 const seeder = require(path.join(__dirname, '../database/seeder.js'));
 
-console.log('Starting CampusCurator database seeder...\n');
+console.log('Starting Mini Project Management System database seeder...\n');

@@ -41,7 +41,7 @@ export default function Header() {
             <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center font-bold text-sm">
               CC
             </div>
-            <span className="font-bold text-lg">CampusCurator</span>
+            <span className="font-bold text-lg">Mini Project Management</span>
           </Link>
 
           {/* Navigation */}

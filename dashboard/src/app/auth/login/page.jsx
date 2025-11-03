@@ -64,7 +64,7 @@ export default function LoginPage() {
               CC
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-white">CampusCurator</h1>
+          <h1 className="text-4xl font-bold text-white">Mini Project Management System</h1>
           <p className="text-gray-300 mt-2">Project Evaluation Platform</p>
         </div>
 
@@ -155,8 +155,8 @@ export default function LoginPage() {
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                     <div className="font-semibold text-gray-900 mb-2">Admin</div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-gray-800 flex-1">admin@campuscurator.com</span>
-                      <Button type="button" variant="secondary" size="sm" onClick={() => quickLogin({ email: 'admin@campuscurator.com', password: 'admin123' })}>Use</Button>
+                      <span className="font-mono text-xs text-gray-800 flex-1">admin@miniproject.com</span>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => quickLogin({ email: 'admin@miniproject.com', password: 'admin123' })}>Use</Button>
                     </div>
                     <p className="text-gray-600 font-mono text-xs mt-2">admin123</p>
                   </div>
@@ -164,8 +164,8 @@ export default function LoginPage() {
                   <div className="bg-green-50 p-4 rounded-lg border border-green-100">
                     <div className="font-semibold text-gray-900 mb-2">Mentor</div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-gray-800 flex-1">john.smith@campuscurator.com</span>
-                      <Button type="button" variant="secondary" size="sm" onClick={() => quickLogin({ email: 'john.smith@campuscurator.com', password: 'mentor123' })}>Use</Button>
+                      <span className="font-mono text-xs text-gray-800 flex-1">john.smith@miniproject.com</span>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => quickLogin({ email: 'john.smith@miniproject.com', password: 'mentor123' })}>Use</Button>
                     </div>
                     <p className="text-gray-600 font-mono text-xs mt-2">mentor123</p>
                   </div>
@@ -186,7 +186,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-sm mt-8">
-          2025 CampusCurator. All rights reserved.
+          2025 Mini Project Management System. All rights reserved.
         </p>
       </div>
     </div>

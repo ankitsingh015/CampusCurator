@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Enhanced Demo Data Seeder for CampusCurator
+ * Enhanced Demo Data Seeder for Mini Project Management System
  * Creates realistic data across all stages for complete testing
  */
 
@@ -33,7 +33,7 @@ const connectDB = async () => {
 const seedDatabase = async () => {
   try {
     console.log('\n' + '='.repeat(60).yellow);
-    console.log('🌱 CampusCurator Enhanced Demo Data Seeder'.bold.green);
+    console.log('Mini Project Management System Enhanced Demo Data Seeder'.bold.green);
     console.log('='.repeat(60).yellow + '\n');
 
     // Clear existing data
@@ -45,13 +45,13 @@ const seedDatabase = async () => {
     await Submission.deleteMany();
     await Evaluation.deleteMany();
     await Result.deleteMany();
-    console.log('✓ Data cleared'.green);
+    console.log('Data cleared'.green);
 
     // Create Users (Admin, Mentors, Students)
     console.log('\nCreating users...'.yellow);
     const adminUser = {
       name: 'Admin User',
-      email: 'admin@campuscurator.com',
+      email: 'admin@miniproject.com',
       password: 'admin123',
       role: 'admin',
       department: 'Administration'
@@ -60,7 +60,7 @@ const seedDatabase = async () => {
     const mentors = [
       {
         name: 'Dr. John Smith',
-        email: 'john.smith@campuscurator.com',
+        email: 'john.smith@miniproject.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Computer Science',
@@ -68,7 +68,7 @@ const seedDatabase = async () => {
       },
       {
         name: 'Dr. Sarah Johnson',
-        email: 'sarah.johnson@campuscurator.com',
+        email: 'sarah.johnson@miniproject.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Computer Science',
@@ -76,7 +76,7 @@ const seedDatabase = async () => {
       },
       {
         name: 'Prof. Michael Brown',
-        email: 'michael.brown@campuscurator.com',
+        email: 'michael.brown@miniproject.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Information Technology',
@@ -84,7 +84,7 @@ const seedDatabase = async () => {
       },
       {
         name: 'Prof. Lisa Anderson',
-        email: 'lisa.anderson@campuscurator.com',
+        email: 'lisa.anderson@miniproject.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Computer Science',
@@ -131,7 +131,7 @@ const seedDatabase = async () => {
     const createdMentors = createdUsers.slice(1, 5);
     const createdStudents = createdUsers.slice(5);
 
-    console.log(`✓ Created ${createdUsers.length} users (1 admin, 4 mentors, ${createdStudents.length} students)`.green);
+    console.log(`Created ${createdUsers.length} users (1 admin, 4 mentors, ${createdStudents.length} students)`.green);
 
     // Create Drives
     console.log('\nCreating drives...'.yellow);
@@ -188,7 +188,7 @@ const seedDatabase = async () => {
       createdBy: admin._id
     });
 
-    console.log(`✓ Created drive: ${drive1.name}`.green);
+    console.log(`Created drive: ${drive1.name}`.green);
 
     // Create Groups with staggered timestamps
     console.log('\nCreating groups...'.yellow);
@@ -259,7 +259,7 @@ const seedDatabase = async () => {
     ];
 
     const createdGroups = await Group.create(groups);
-    console.log(`✓ Created ${createdGroups.length} groups with staggered timestamps`.green);
+    console.log(`Created ${createdGroups.length} groups with staggered timestamps`.green);
 
     // Assign mentors to groups (simulate auto-allotment)
     console.log('\nAssigning mentors...'.yellow);
@@ -277,7 +277,7 @@ const seedDatabase = async () => {
     createdGroups[2].mentorAllottedAt = new Date();
     createdGroups[2].status = 'mentor-assigned';
     await createdGroups[2].save();
-    console.log('✓ Mentors assigned (by timestamp & preference)'.green);
+    console.log('Mentors assigned (by timestamp & preference)'.green);
 
     // Create Synopses
     console.log('\nCreating synopses...'.yellow);
@@ -318,7 +318,7 @@ const seedDatabase = async () => {
     ];
 
     await Synopsis.create(synopses);
-    console.log(`✓ Created ${synopses.length} synopses (2 approved, 1 under-review)`.green);
+    console.log(`Created ${synopses.length} synopses (2 approved, 1 under-review)`.green);
 
     // Create Submissions (files)
     console.log('\nCreating submissions...'.yellow);
@@ -347,7 +347,7 @@ const seedDatabase = async () => {
     ];
 
     await Submission.create(submissions);
-    console.log(`✓ Created ${submissions.length} submissions (files)`.green);
+    console.log(`Created ${submissions.length} submissions (files)`.green);
 
     // Create Checkpoint Submissions
     console.log('\nCreating checkpoint submissions...'.yellow);
@@ -366,7 +366,7 @@ const seedDatabase = async () => {
     ];
 
     const createdCheckpoints = await CheckpointSubmission.create(checkpointSubmissions);
-    console.log(`✓ Created ${createdCheckpoints.length} checkpoint submissions`.green);
+    console.log(`Created ${createdCheckpoints.length} checkpoint submissions`.green);
 
     // Create Evaluations
     console.log('\nCreating evaluations...'.yellow);
@@ -389,7 +389,7 @@ const seedDatabase = async () => {
     ];
 
     await Evaluation.create(evaluations);
-    console.log(`✓ Created ${evaluations.length} evaluations`.green);
+    console.log(`Created ${evaluations.length} evaluations`.green);
 
     // Create Results
     console.log('\nCreating results...'.yellow);
@@ -413,13 +413,13 @@ const seedDatabase = async () => {
     ];
 
     await Result.create(results);
-    console.log(`✓ Created ${results.length} results`.green);
+    console.log(`Created ${results.length} results`.green);
 
     // Summary
     console.log('\n' + '='.repeat(60).yellow);
-    console.log('✅ Demo Data Seeding Complete!'.bold.green);
+    console.log('Demo Data Seeding Complete!'.bold.green);
     console.log('='.repeat(60).yellow);
-    console.log('\n📊 Summary:'.bold);
+    console.log('\n Summary:'.bold);
     console.log(`   • 1 Admin, 4 Mentors, 10 Students (3 groups, 2 ungrouped)`.cyan);
     console.log(`   • 1 Active Drive (Semester 6)`.cyan);
     console.log(`   • 3 Groups with staggered timestamps (for FIFO testing)`.cyan);
@@ -427,16 +427,16 @@ const seedDatabase = async () => {
     console.log(`   • 2 Submissions (files)`.cyan);
     console.log(`   • 1 Evaluation (checkpoint)`.cyan);
     console.log(`   • 1 Result (final marks)`.cyan);
-    console.log('\n🔐 Test Credentials:'.bold);
-    console.log('   Admin:   admin@campuscurator.com / admin123');
-    console.log('   Mentor:  sarah.johnson@campuscurator.com / mentor123');
+    console.log('\n Test Credentials:'.bold);
+    console.log('   Admin:   admin@miniproject.com / admin123');
+    console.log('   Mentor:  sarah.johnson@miniproject.com / mentor123');
     console.log('   Student: alice.w@student.com / student123');
-    console.log('\n🚀 Ready to test complete workflow!'.bold.green);
+    console.log('\n Ready to test complete workflow!'.bold.green);
     console.log('='.repeat(60).yellow + '\n');
 
     process.exit(0);
   } catch (error) {
-    console.error('\n❌ Seeding Error:'.bold.red, error.message);
+    console.error('\n Seeding Error:'.bold.red, error.message);
     console.error(error);
     process.exit(1);
   }

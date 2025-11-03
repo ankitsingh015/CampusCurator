@@ -1,34 +1,34 @@
-# CampusCurator 🎓
+# Mini Project Management System
 
 A comprehensive campus-wide platform connecting students, mentors, and administrators to manage academic project drives efficiently through all stages - from group formation to final results.
 
-## 🌟 Features
+## Features
 
 ### For Students
-- 📝 View and join active project drives
-- 👥 Create or join project groups with invitation codes
-- 🎯 Set mentor preferences for group allotment
-- 📄 Submit project synopsis for mentor approval
-- 📊 Submit checkpoint evaluations (mid-sem, end-sem)
-- 🏆 View evaluation feedback and final results
+- View and join active project drives
+- Create or join project groups with invitation codes
+- Set mentor preferences for group allotment
+- Submit project synopsis for mentor approval
+- Submit checkpoint evaluations (mid-sem, end-sem)
+- View evaluation feedback and final results
 
 ### For Mentors
-- 👀 View assigned groups and student details
-- ✅ Review and approve/reject project synopsis
-- 📝 Evaluate checkpoint submissions
-- 💬 Provide feedback and improvement suggestions
-- 📈 Track student progress throughout the drive
+- View assigned groups and student details
+- Review and approve/reject project synopsis
+- Evaluate checkpoint submissions
+- Provide feedback and improvement suggestions
+- Track student progress throughout the drive
 
 ### For Admins
-- 🚀 Create and manage project drives
-- 👥 Manage student batches and mentor lists
-- ⚙️ Configure group sizes and mentor capacity
-- 🔄 Manual or automatic mentor allotment
-- 📊 View comprehensive drive statistics
-- 🎯 Manage stage transitions and deadlines
-- 📢 Declare and publish final results
+- Create and manage project drives
+- Manage student batches and mentor lists
+- Configure group sizes and mentor capacity
+- Manual or automatic mentor allotment
+- View comprehensive drive statistics
+- Manage stage transitions and deadlines
+- Declare and publish final results
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 - **Backend:** Node.js, Express.js
@@ -46,10 +46,10 @@ A comprehensive campus-wide platform connecting students, mentors, and administr
 5. **Checkpoints/Evaluations** - Progress tracking through multiple evaluations
 6. **Result Declaration** - Final consolidated results publication
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-CampusCurator/
+Mini Project Management System/
 ├── backend/                    # Node.js/Express API
 │   ├── config/                # Configuration files
 │   │   └── database.js       # MongoDB connection
@@ -93,7 +93,7 @@ CampusCurator/
 
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js (v14+)
@@ -102,8 +102,8 @@ CampusCurator/
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/ankitsingh015/CampusCurator.git
-cd CampusCurator
+git clone https://github.com/ankitsingh015/Mini-Project-Management-System.git
+cd Mini-Project-Management-System
 ```
 
 ### 2. Setup MongoDB Atlas
@@ -143,16 +143,16 @@ curl -X POST http://localhost:5000/api/auth/register \
   }'
 ```
 
-📖 **For detailed setup instructions, see [QUICKSTART.md](QUICKSTART.md)**
+For detailed setup instructions, see [QUICKSTART.md](QUICKSTART.md)
 
-## 📚 Documentation
+## Documentation
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 5 steps
 - **[Database Setup](database/DATABASE_SETUP.md)** - MongoDB Atlas configuration
 - **[Database Schema](database/SCHEMA.md)** - Complete schema documentation
 - **[Backend API](backend/README.md)** - API endpoints and usage
 
-## 🔑 API Endpoints
+## API Endpoints
 
 ### Authentication
 ```
@@ -187,7 +187,7 @@ POST   /api/groups/auto-allot/:driveId - Auto-allot (Admin)
 
 *Full API documentation in [backend/README.md](backend/README.md)*
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### Collections
 1. **Users** - Students, Mentors, Admins
@@ -201,7 +201,7 @@ POST   /api/groups/auto-allot/:driveId - Auto-allot (Admin)
 
 *Detailed schema in [database/SCHEMA.md](database/SCHEMA.md)*
 
-## 🔐 User Roles
+## User Roles
 
 | Role | Permissions |
 |------|------------|
@@ -209,7 +209,7 @@ POST   /api/groups/auto-allot/:driveId - Auto-allot (Admin)
 | **Mentor** | View assigned groups, review synopsis, evaluate checkpoints |
 | **Student** | Create/join groups, submit synopsis & checkpoints, view results |
 
-## 🛠️ Development
+## Development
 
 ### Environment Variables
 ```env
@@ -234,7 +234,7 @@ cd backend
 npm start
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing with curl
 ```bash
@@ -251,7 +251,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 # Use Postman for easier testing
 ```
 
-## 🚧 Roadmap
+## Roadmap
 
 - [x] Backend API with authentication
 - [x] Drive management system
@@ -269,7 +269,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 - [ ] Analytics dashboard
 - [ ] Mobile responsive design
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please:
 1. Fork the repository
@@ -278,21 +278,21 @@ Contributions are welcome! Please:
 4. Push to the branch
 5. Open a Pull Request
 
-## 📝 License
+## License
 
 This project is licensed under the terms included in the LICENSE file.
 
-## 👥 Authors
+## Authors
 
 - Ankit Singh - [@ankitsingh015](https://github.com/ankitsingh015)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - MongoDB Atlas for database hosting
 - Express.js community
 - All contributors and testers
 
-## 📞 Support
+## Support
 
 For issues, questions, or suggestions:
 - Open an issue on GitHub
@@ -301,4 +301,4 @@ For issues, questions, or suggestions:
 
 ---
 
-**Made with ❤️ for efficient campus project management**
+**Made with love for efficient campus project management**
