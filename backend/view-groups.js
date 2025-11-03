@@ -31,7 +31,7 @@ async function viewGroupsAndAllotment() {
         console.log(`      ${idx+1}. ${member.name} (${member.email})`);
       });
       
-      console.log(`\n   Mentor Preferences (FIFO Priority Order)`);
+      console.log(`\n   🎓 Mentor Preferences (FIFO Priority Order):`);
       group.mentorPreferences.forEach((pref) => {
         const isCurrent = group.assignedMentor && group.assignedMentor._id.toString() === pref.mentor._id.toString();
         const marker = isCurrent ? '[ASSIGNED]' : '[WAITING]';
@@ -41,24 +41,24 @@ async function viewGroupsAndAllotment() {
       if (group.assignedMentor) {
         console.log(`\n   ASSIGNED MENTOR: ${group.assignedMentor.name} (${group.assignedMentor.email})`);
       } else {
-        console.log(`\n   ⏳ MENTOR: Not yet assigned`);
+        console.log(`\n   MENTOR: Not yet assigned`);
       }
     }
     
     console.log('\n\n' + '='.repeat(90));
-    console.log('\n FIFO MENTOR ALLOTMENT ALGORITHM');
+    console.log('FIFO MENTOR ALLOTMENT ALGORITHM');
     console.log('='.repeat(90));
     console.log(`
 How It Works:
-   1️⃣  All unassigned groups are sorted by createdAt (EARLIEST FIRST)
-   2️⃣  For each group in order:
+   1. All unassigned groups are sorted by createdAt (EARLIEST FIRST)
+   2. For each group in order:
        • Check if 1st preference mentor has capacity (< 3 groups)
-       • If yes → ASSIGN and mark capacity used
-       • If no → Check 2nd preference, then 3rd preference
-   3️⃣  Result: FAIR allocation ensuring:
-       Groups created first get their preferences honored first
-       No mentor exceeds capacity (max 3 groups)
-       Preferences are satisfied when possible
+       • If yes -> ASSIGN and mark capacity used
+       • If no -> Check 2nd preference, then 3rd preference
+   3. Result: FAIR allocation ensuring:
+      Groups created first get their preferences honored first
+      No mentor exceeds capacity (max 3 groups)
+      Preferences are satisfied when possible
 
 Current Allocation Summary:
 `);

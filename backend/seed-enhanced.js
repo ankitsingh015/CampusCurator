@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Enhanced Demo Data Seeder for Mini Project Management System
+ * Enhanced Demo Data Seeder for CampusCurator
  * Creates realistic data across all stages for complete testing
  */
 
@@ -33,7 +33,7 @@ const connectDB = async () => {
 const seedDatabase = async () => {
   try {
     console.log('\n' + '='.repeat(60).yellow);
-    console.log('Mini Project Management System Enhanced Demo Data Seeder'.bold.green);
+    console.log('CampusCurator Enhanced Demo Data Seeder'.bold.green);
     console.log('='.repeat(60).yellow + '\n');
 
     // Clear existing data
@@ -51,7 +51,7 @@ const seedDatabase = async () => {
     console.log('\nCreating users...'.yellow);
     const adminUser = {
       name: 'Admin User',
-      email: 'admin@miniproject.com',
+      email: 'admin@campuscurator.com',
       password: 'admin123',
       role: 'admin',
       department: 'Administration'
@@ -60,7 +60,7 @@ const seedDatabase = async () => {
     const mentors = [
       {
         name: 'Dr. John Smith',
-        email: 'john.smith@miniproject.com',
+        email: 'john.smith@campuscurator.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Computer Science',
@@ -68,7 +68,7 @@ const seedDatabase = async () => {
       },
       {
         name: 'Dr. Sarah Johnson',
-        email: 'sarah.johnson@miniproject.com',
+        email: 'sarah.johnson@campuscurator.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Computer Science',
@@ -76,7 +76,7 @@ const seedDatabase = async () => {
       },
       {
         name: 'Prof. Michael Brown',
-        email: 'michael.brown@miniproject.com',
+        email: 'michael.brown@campuscurator.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Information Technology',
@@ -84,7 +84,7 @@ const seedDatabase = async () => {
       },
       {
         name: 'Prof. Lisa Anderson',
-        email: 'lisa.anderson@miniproject.com',
+        email: 'lisa.anderson@campuscurator.com',
         password: 'mentor123',
         role: 'mentor',
         department: 'Computer Science',
@@ -366,7 +366,7 @@ const seedDatabase = async () => {
     ];
 
     const createdCheckpoints = await CheckpointSubmission.create(checkpointSubmissions);
-    console.log(`Created ${createdCheckpoints.length} checkpoint submissions`.green);
+    console.log(`✓ Created ${createdCheckpoints.length} checkpoint submissions`.green);
 
     // Create Evaluations
     console.log('\nCreating evaluations...'.yellow);
@@ -389,7 +389,7 @@ const seedDatabase = async () => {
     ];
 
     await Evaluation.create(evaluations);
-    console.log(`Created ${evaluations.length} evaluations`.green);
+    console.log(`✓ Created ${evaluations.length} evaluations`.green);
 
     // Create Results
     console.log('\nCreating results...'.yellow);
@@ -413,7 +413,7 @@ const seedDatabase = async () => {
     ];
 
     await Result.create(results);
-    console.log(`Created ${results.length} results`.green);
+    console.log(`✓ Created ${results.length} results`.green);
 
     // Summary
     console.log('\n' + '='.repeat(60).yellow);
@@ -428,8 +428,8 @@ const seedDatabase = async () => {
     console.log(`   • 1 Evaluation (checkpoint)`.cyan);
     console.log(`   • 1 Result (final marks)`.cyan);
     console.log('\n Test Credentials:'.bold);
-    console.log('   Admin:   admin@miniproject.com / admin123');
-    console.log('   Mentor:  sarah.johnson@miniproject.com / mentor123');
+    console.log('   Admin:   admin@campuscurator.com / admin123');
+    console.log('   Mentor:  sarah.johnson@campuscurator.com / mentor123');
     console.log('   Student: alice.w@student.com / student123');
     console.log('\n Ready to test complete workflow!'.bold.green);
     console.log('='.repeat(60).yellow + '\n');

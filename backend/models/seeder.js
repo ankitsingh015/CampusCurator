@@ -18,28 +18,28 @@ const connectDB = async () => {
 const users = [
   {
     name: 'Admin User',
-    email: 'admin@miniproject.com',
+    email: 'admin@campuscurator.com',
     password: 'admin123',
     role: 'admin',
     department: 'Administration'
   },
   {
     name: 'Dr. John Smith',
-    email: 'john.smith@miniproject.com',
+    email: 'john.smith@campuscurator.com',
     password: 'mentor123',
     role: 'mentor',
     department: 'Computer Science'
   },
   {
     name: 'Dr. Sarah Johnson',
-    email: 'sarah.johnson@miniproject.com',
+    email: 'sarah.johnson@campuscurator.com',
     password: 'mentor123',
     role: 'mentor',
     department: 'Computer Science'
   },
   {
     name: 'Prof. Michael Brown',
-    email: 'michael.brown@miniproject.com',
+    email: 'michael.brown@campuscurator.com',
     password: 'mentor123',
     role: 'mentor',
     department: 'Information Technology'
@@ -218,14 +218,14 @@ const seedData = async () => {
     const createdGroups = await Group.create(groups);
     console.log(`${createdGroups.length} sample groups created.`.green);
     console.log('\n' + '='.repeat(50));
-    console.log('Database seeded successfully!'.green.bold);
+    console.log('✅ Database seeded successfully!'.green.bold);
     console.log('='.repeat(50));
     console.log('\nSample Credentials:'.cyan.bold);
     console.log('\nAdmin:'.yellow);
-    console.log('  Email: admin@miniproject.com');
+    console.log('  Email: admin@campuscurator.com');
     console.log('  Password: admin123');
     console.log('\nMentor:'.yellow);
-    console.log('  Email: john.smith@miniproject.com');
+    console.log('  Email: john.smith@campuscurator.com');
     console.log('  Password: mentor123');
     console.log('\nStudent:'.yellow);
     console.log('  Email: alice.w@student.com');

@@ -63,7 +63,7 @@ export default function GoogleSignInButton({ onSuccessRedirect = null }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Insert Google Identity Services script if not present
+    // Insert Google Identity Services script
     if (!document.getElementById('gsi-script')) {
       const s = document.createElement('script');
       s.src = 'https://accounts.google.com/gsi/client';

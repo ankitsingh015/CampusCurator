@@ -130,7 +130,7 @@ export default function DriveManagement({ params }) {
                   stage.status === 'active' ? 'bg-blue-600' : 
                   'bg-gray-400'
                 }`}>
-                  {stage.status === 'completed' ? '[X]' : idx + 1}
+                  {stage.status === 'completed' ? '✓' : idx + 1}
                 </div>
                 <div className="text-sm font-medium text-gray-700">{stage.name}</div>
                 {idx < stages.length - 1 && <div className="w-8 h-px bg-gray-300" />}

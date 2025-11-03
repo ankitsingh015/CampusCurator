@@ -2,14 +2,14 @@
 
 const MongoClient = require('mongodb').MongoClient;
 
-const MONGO_URI = 'mongodb+srv://apiksha:Apiksha123@cluster0.g5xaa.mongodb.net/MiniProjectManagement';
+const MONGO_URI = 'mongodb+srv://apiksha:Apiksha123@cluster0.g5xaa.mongodb.net/CampusCurator';
 
 async function viewGroupsAndMentors() {
   const client = new MongoClient(MONGO_URI);
   
   try {
     await client.connect();
-    const db = client.db('MiniProjectManagement');
+    const db = client.db('CampusCurator');
     
     console.log('\n' + '='.repeat(100));
     console.log('GROUP FORMATION & MENTOR ALLOTMENT VISUALIZATION');
@@ -39,7 +39,7 @@ async function viewGroupsAndMentors() {
       console.log(`   Created: ${createdDate}`);
       console.log(`   Status: ${group.status}`);
       
-      console.log(`\n   Members (${group.members?.length || 0})`);
+      console.log(`\n   👥 Members (${group.members?.length || 0}):`);
       if (group.members && group.members.length > 0) {
         group.members.forEach((memberId, i) => {
           const member = userMap[memberId.toString()];
@@ -59,7 +59,7 @@ async function viewGroupsAndMentors() {
                               group.assignedMentor.toString() === pref.mentor.toString();
             const marker = isAssigned ? '[ASSIGNED]' : '[WAITING]';
             if (mentor) {
-              console.log(`      ${marker} → Rank ${pref.rank}: ${mentor.name} (${mentor.email})`);
+              console.log(`      ${marker} -> Rank ${pref.rank}: ${mentor.name} (${mentor.email})`);
             }
           });
       }
@@ -70,13 +70,13 @@ async function viewGroupsAndMentors() {
           console.log(`\n   FINAL ASSIGNMENT: ${mentor.name} (${mentor.email})`);
         }
       } else {
-        console.log(`\n   ⏳ AWAITING MENTOR ASSIGNMENT`);
+        console.log(`\n   AWAITING MENTOR ASSIGNMENT`);
       }
     });
     
     // Summary
     console.log(`\n\n${'='.repeat(100)}`);
-    console.log('\n MENTOR ALLOTMENT SUMMARY');
+    console.log('📊 MENTOR ALLOTMENT SUMMARY');
     console.log(`${'='.repeat(100)}`);
     
     const mentorGroups = {};
@@ -93,14 +93,14 @@ async function viewGroupsAndMentors() {
     Object.entries(mentorGroups).forEach(([mentorId, groupList]) => {
       const mentor = userMap[mentorId];
       if (mentor) {
-        console.log(`\n   ${mentor.name} (${mentor.email})`);
+        console.log(`\n   📌 ${mentor.name} (${mentor.email}):`);
         console.log(`      Groups Assigned: ${groupList.join(', ')}`);
         console.log(`      Capacity Used: ${groupList.length}/3`);
       }
     });
     
     console.log(`\n\n${'='.repeat(100)}`);
-    console.log('\n HOW FIFO MENTOR ALLOTMENT WORKS');
+    console.log('HOW FIFO MENTOR ALLOTMENT WORKS');
     console.log(`${'='.repeat(100)}`);
     console.log(`
 1. GROUPS ARE SORTED BY CREATION TIME (createdAt)

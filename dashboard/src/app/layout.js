@@ -3,8 +3,8 @@ import Providers from '@/components/Providers';
 import Header from '@/components/Header';
 
 export const metadata = {
-  title: 'Mini Project Management System Dashboard',
-  description: 'Mini Project Management System - project drives management'
+  title: 'CampusCurator Dashboard',
+  description: 'CampusCurator - project drives management'
 };
 
 export default function RootLayout({ children }) {

@@ -1,7 +1,7 @@
 {
   "name": "campuscurator-backend",
   "version": "1.0.0",
-  "description": "Backend API for Mini Project Management System - Campus project drive management system",
+  "description": "Backend API for CampusCurator - Campus project drive management system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

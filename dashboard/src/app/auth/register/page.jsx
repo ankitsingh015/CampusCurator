@@ -28,7 +28,7 @@ export default function RegisterPage() {
             <span className="text-white text-2xl font-bold">CC</span>
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-          <p className="text-gray-400">Join Mini Project Management System</p>
+          <p className="text-gray-400">Join CampusCurator</p>
         </div>
 
         <form onSubmit={onSubmit} className="bg-slate-800 border border-slate-700 rounded-xl p-8 space-y-4 shadow-xl">
