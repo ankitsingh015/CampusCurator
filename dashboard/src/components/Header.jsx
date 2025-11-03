@@ -3,14 +3,32 @@ import Link from 'next/link';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 export default function Header() {
   const { data: user } = useCurrentUser();
   const [showMenu, setShowMenu] = useState(false);
   const router = useRouter();
+  const qc = useQueryClient();
 
   const handleLogout = () => {
+    // Close the dropdown menu
+    setShowMenu(false);
+    
+    // Clear token from API client
+    api.setToken(null);
+    
+    // Clear token from localStorage
     localStorage.removeItem('cc_token');
+    
+    // Immediately invalidate currentUser query to force refetch
+    qc.invalidateQueries({ queryKey: ['currentUser'] });
+    
+    // Clear all React Query cache
+    qc.clear();
+    
+    // Redirect to login
     router.push('/auth/login');
   };
 
