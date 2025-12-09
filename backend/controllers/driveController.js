@@ -17,41 +17,128 @@ exports.createDrive = async (req, res, next) => {
     // Handle student emails (support both formats)
     const studentEmails = participatingStudentEmails || participatingStudents;
     if (studentEmails && studentEmails.length > 0) {
-      const students = await User.find({
+      const existingStudents = await User.find({
         email: { $in: studentEmails },
         role: 'student'
       });
       
-      if (students.length !== studentEmails.length) {
-        const foundEmails = students.map(s => s.email);
-        const notFound = studentEmails.filter(email => !foundEmails.includes(email));
-        return res.status(400).json({
-          success: false,
-          message: `Students not found with emails: ${notFound.join(', ')}`
+      const foundEmails = existingStudents.map(s => s.email);
+      const notFoundEmails = studentEmails.filter(email => !foundEmails.includes(email));
+      
+      // Auto-create missing students
+      if (notFoundEmails.length > 0) {
+        console.log(`📝 Auto-creating ${notFoundEmails.length} new students...`);
+        
+        const newStudents = notFoundEmails.map(email => {
+          // Extract details from email (e.g., 22bcs015@smvdu.ac.in)
+          const entryNo = email.split('@')[0].toLowerCase();
+          
+          // Extract year (22 -> 2022, 23 -> 2023)
+          const yearMatch = entryNo.match(/^(\d{2})/);
+          const batch = yearMatch ? `20${yearMatch[1]}` : new Date().getFullYear().toString();
+          
+          // Extract department code (bcs -> Computer Science, bec -> Electronics, etc.)
+          const deptMatch = entryNo.match(/\d{2}([a-z]+)/i);
+          let department = 'Not Specified';
+          if (deptMatch) {
+            const deptCode = deptMatch[1].toLowerCase();
+            const deptMap = {
+              'bcs': 'Computer Science',
+              'bec': 'Electronics',
+              'bee': 'Electrical Engineering',
+              'bme': 'Mechanical Engineering',
+              'bce': 'Civil Engineering',
+              'bit': 'Information Technology',
+              'mcs': 'Computer Science',
+              'mec': 'Electronics'
+            };
+            department = deptMap[deptCode] || 'Computer Science';
+          }
+          
+          return {
+            name: entryNo.toUpperCase(),
+            email: email,
+            password: 'student123', // Default password
+            role: 'student',
+            batch: batch,
+            department: department,
+            registrationNumber: entryNo.toUpperCase()
+          };
         });
+        
+        try {
+          const createdStudents = await User.insertMany(newStudents, { ordered: false });
+          console.log(`✅ Created ${createdStudents.length} new students`);
+          existingStudents.push(...createdStudents);
+        } catch (err) {
+          if (err.code === 11000) {
+            // Some duplicates, fetch them
+            const retryStudents = await User.find({
+              email: { $in: notFoundEmails },
+              role: 'student'
+            });
+            existingStudents.push(...retryStudents);
+          } else {
+            throw err;
+          }
+        }
       }
       
-      driveData.participatingStudents = students.map(s => s._id);
+      driveData.participatingStudents = existingStudents.map(s => s._id);
     }
 
     // Handle mentor emails (support both formats)
     const mentorEmailsList = mentorEmails || mentors;
     if (mentorEmailsList && mentorEmailsList.length > 0) {
-      const mentorUsers = await User.find({
+      const existingMentors = await User.find({
         email: { $in: mentorEmailsList },
         role: 'mentor'
       });
       
-      if (mentorUsers.length !== mentorEmailsList.length) {
-        const foundEmails = mentorUsers.map(m => m.email);
-        const notFound = mentorEmailsList.filter(email => !foundEmails.includes(email));
-        return res.status(400).json({
-          success: false,
-          message: `Mentors not found with emails: ${notFound.join(', ')}`
+      const foundEmails = existingMentors.map(m => m.email);
+      const notFoundEmails = mentorEmailsList.filter(email => !foundEmails.includes(email));
+      
+      // Auto-create missing mentors
+      if (notFoundEmails.length > 0) {
+        console.log(`📝 Auto-creating ${notFoundEmails.length} new mentors...`);
+        
+        const newMentors = notFoundEmails.map(email => {
+          // Extract name from email (john.smith@smvdu.ac.in -> John Smith)
+          const namePart = email.split('@')[0];
+          const nameParts = namePart.split(/[._-]/);
+          const formattedName = nameParts
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+            .join(' ');
+          
+          return {
+            name: formattedName || email.split('@')[0],
+            email: email,
+            password: 'mentor123', // Default password
+            role: 'mentor',
+            department: 'Faculty', // Generic department for auto-created mentors
+            phone: ''
+          };
         });
+        
+        try {
+          const createdMentors = await User.insertMany(newMentors, { ordered: false });
+          console.log(`✅ Created ${createdMentors.length} new mentors`);
+          existingMentors.push(...createdMentors);
+        } catch (err) {
+          if (err.code === 11000) {
+            // Some duplicates, fetch them
+            const retryMentors = await User.find({
+              email: { $in: notFoundEmails },
+              role: 'mentor'
+            });
+            existingMentors.push(...retryMentors);
+          } else {
+            throw err;
+          }
+        }
       }
       
-      driveData.mentors = mentorUsers.map(m => m._id);
+      driveData.mentors = existingMentors.map(m => m._id);
     }
 
     const drive = await Drive.create(driveData);
