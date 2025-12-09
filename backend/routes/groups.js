@@ -3,6 +3,7 @@ const {
   createGroup,
   getGroups,
   getGroup,
+  updateGroupInfo,
   joinGroup,
   manageMemberRequest,
   removeMember,
@@ -42,6 +43,7 @@ router.get(
 router
   .route('/:id')
   .get(protect, getGroup)
+  .put(protect, authorize('student'), updateGroupInfo)
   .delete(protect, deleteGroup);
 router.post('/:id/leave', protect, authorize('student'), leaveGroup);
 router

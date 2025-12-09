@@ -2,6 +2,72 @@ const Group = require('../models/Group');
 const Drive = require('../models/Drive');
 const User = require('../models/User');
 const { v4: uuidv4 } = require('uuid');
+// Update group metadata (project title/description, mentor preferences) by leader
+exports.updateGroupInfo = async (req, res, next) => {
+  try {
+    const { projectTitle, projectDescription, mentorIds } = req.body;
+
+    const group = await Group.findById(req.params.id).populate('drive', 'mentors status currentStage');
+    if (!group) {
+      return res.status(404).json({ success: false, message: 'Group not found' });
+    }
+
+    if (group.leader.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: 'Only the group leader can update details' });
+    }
+
+    const incomingMentorIds = Array.isArray(mentorIds) ? mentorIds.filter(Boolean).map(id => id.toString()) : [];
+
+    if (group.assignedMentor && incomingMentorIds.length && group.assignedMentor.toString() !== incomingMentorIds[0]) {
+      return res.status(400).json({ success: false, message: 'Mentor already assigned; cannot change selection' });
+    }
+
+    if (typeof projectTitle === 'string') {
+      group.projectTitle = projectTitle.trim();
+    }
+    if (typeof projectDescription === 'string') {
+      group.projectDescription = projectDescription.trim();
+    }
+
+    if (incomingMentorIds.length) {
+      if (incomingMentorIds.length > 3) {
+        return res.status(400).json({ success: false, message: 'You can select up to 3 mentor preferences' });
+      }
+      // ensure uniqueness while preserving order
+      const seen = new Set();
+      const orderedUnique = incomingMentorIds.filter(id => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+
+      const allowedMentors = (group.drive?.mentors || []).map(m => m.toString());
+      const invalid = orderedUnique.filter(id => !allowedMentors.includes(id));
+      if (invalid.length) {
+        return res.status(400).json({ success: false, message: 'Selected mentor is not part of this drive' });
+      }
+
+      group.mentorPreferences = orderedUnique.map((id, idx) => ({ mentor: id, rank: idx + 1 }));
+    }
+
+    // Track when student last updated details/preferences
+    group.preferenceUpdatedAt = Date.now();
+
+    await group.save();
+    await group.populate('leader', 'name email batch');
+    await group.populate('members.student', 'name email batch');
+    await group.populate('assignedMentor', 'name email department');
+    await group.populate({
+      path: 'drive',
+      select: 'name status currentStage mentors',
+      populate: { path: 'mentors', select: 'name email department' }
+    });
+
+    return res.status(200).json({ success: true, data: group });
+  } catch (error) {
+    next(error);
+  }
+};
 exports.createGroup = async (req, res, next) => {
   try {
     const { name, drive, maxMembers, mentorPreferences } = req.body;
@@ -85,7 +151,11 @@ exports.getGroup = async (req, res, next) => {
       .populate('leader', 'name email batch')
       .populate('members.student', 'name email batch')
       .populate('assignedMentor', 'name email department')
-      .populate('drive', 'name status currentStage')
+      .populate({
+        path: 'drive',
+        select: 'name status currentStage mentors',
+        populate: { path: 'mentors', select: 'name email department' }
+      })
       .populate('mentorPreferences.mentor', 'name email department');
     if (!group) {
       return res.status(404).json({

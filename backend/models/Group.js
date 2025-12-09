@@ -75,6 +75,9 @@ const groupSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  preferenceUpdatedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -6,7 +6,7 @@ import ProtectedRole from '@/components/ProtectedRole';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardBody, Badge, StatCard, LoadingSpinner, EmptyState, Alert, Button } from '@/components/UI';
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 
 export default function GroupDetail({ params }) {
   const { id } = use(params);
@@ -15,6 +15,10 @@ export default function GroupDetail({ params }) {
   const router = useRouter();
   const [leaveError, setLeaveError] = useState('');
   const [leaveSuccess, setLeaveSuccess] = useState('');
+  const [projectTitleInput, setProjectTitleInput] = useState('');
+  const [projectDescriptionInput, setProjectDescriptionInput] = useState('');
+  const [mentorChoices, setMentorChoices] = useState(['', '', '']);
+  const [editing, setEditing] = useState(false);
 
   const { data: group, isLoading: groupLoading } = useQuery({
     queryKey: ['group', id],
@@ -24,6 +28,23 @@ export default function GroupDetail({ params }) {
     },
     enabled: !!id
   });
+
+  useEffect(() => {
+    if (group) {
+      setProjectTitleInput(group.projectTitle || '');
+      setProjectDescriptionInput(group.projectDescription || '');
+      if (group.mentorPreferences && group.mentorPreferences.length > 0) {
+        const sorted = [...group.mentorPreferences].sort((a, b) => (a.rank || 0) - (b.rank || 0));
+        const seeds = sorted.slice(0, 3).map(p => p.mentor?._id || p.mentor || '');
+        setMentorChoices([seeds[0] || '', seeds[1] || '', seeds[2] || '']);
+      } else if (group.assignedMentor?._id) {
+        setMentorChoices([group.assignedMentor._id, '', '']);
+      } else {
+        setMentorChoices(['', '', '']);
+      }
+      setEditing(false);
+    }
+  }, [group]);
 
   const { data: myGroups, isLoading: groupsLoading } = useQuery({
     queryKey: ['myGroups'],
@@ -70,6 +91,20 @@ export default function GroupDetail({ params }) {
     }
   });
 
+  const updateGroupMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.put(`/groups/${id}`, { body: payload });
+      return res.data || res;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['group', id] });
+      alert('Group details updated');
+    },
+    onError: (err) => {
+      alert(err.response?.data?.message || 'Unable to update group');
+    }
+  });
+
   const manageRequestMutation = useMutation({
     mutationFn: async ({ memberId, action }) => {
       const res = await api.put(`/groups/${id}/members/${memberId}`, { body: { action } });
@@ -92,6 +127,28 @@ export default function GroupDetail({ params }) {
   const isLeader = userId && group.leader?._id?.toString() === userId.toString();
   const isMember = userId && (group.members || []).some(m => (m.student?._id || m.student)?.toString() === userId.toString());
   const pendingMembers = (group.members || []).filter(m => m.status === 'pending');
+  const mentorOptions = group.drive?.mentors || [];
+
+  const filteredMentorsFor = (index) => {
+    // Exclude only earlier selections so the current selection remains visible
+    const taken = mentorChoices.slice(0, index).filter(Boolean).map(id => id.toString());
+    return mentorOptions.filter(m => {
+      const mid = (m._id || m.id || '').toString();
+      return !taken.includes(mid);
+    });
+  };
+
+  const updateMentorChoice = (index, value) => {
+    const next = [...mentorChoices];
+    next[index] = value;
+    // Clear downstream duplicates
+    for (let i = index + 1; i < next.length; i += 1) {
+      if (next[i] && next.slice(0, i).includes(next[i])) {
+        next[i] = '';
+      }
+    }
+    setMentorChoices(next);
+  };
 
   return (
     <ProtectedRole allowedRole="student">
@@ -166,7 +223,132 @@ export default function GroupDetail({ params }) {
                     <p className="text-sm text-gray-600 mb-1">Assigned Mentor</p>
                     <p className="text-lg font-semibold text-gray-900">{group.assignedMentor?.name || 'Pending Assignment'}</p>
                   </div>
+                  <div className="md:col-span-2">
+                    <p className="text-sm text-gray-600 mb-1">Project Description</p>
+                    <p className="text-base text-gray-900 whitespace-pre-wrap">{group.projectDescription || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Preferences Updated At</p>
+                    <p className="text-sm text-gray-900">{group.preferenceUpdatedAt ? new Date(group.preferenceUpdatedAt).toLocaleString() : 'Not updated'}</p>
+                  </div>
                 </div>
+
+                {isLeader && (
+                  <div className="mt-6 flex items-center gap-3">
+                    {!editing && (
+                      <Button variant="outline" onClick={() => setEditing(true)}>Edit Details</Button>
+                    )}
+                    {editing && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            updateGroupMutation.mutate({
+                              projectTitle: projectTitleInput,
+                              projectDescription: projectDescriptionInput,
+                              mentorIds: mentorChoices.filter(Boolean)
+                            });
+                            setEditing(false);
+                          }}
+                          disabled={updateGroupMutation.isPending}
+                        >
+                          {updateGroupMutation.isPending ? 'Saving...' : 'Save Details'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setProjectTitleInput(group.projectTitle || '');
+                            setProjectDescriptionInput(group.projectDescription || '');
+                            if (group.mentorPreferences && group.mentorPreferences.length > 0) {
+                              const sorted = [...group.mentorPreferences].sort((a, b) => (a.rank || 0) - (b.rank || 0));
+                              const seeds = sorted.slice(0, 3).map(p => p.mentor?._id || p.mentor || '');
+                              setMentorChoices([seeds[0] || '', seeds[1] || '', seeds[2] || '']);
+                            } else if (group.assignedMentor?._id) {
+                              setMentorChoices([group.assignedMentor._id, '', '']);
+                            } else {
+                              setMentorChoices(['', '', '']);
+                            }
+                            setEditing(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isLeader && editing && (
+                  <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Set project title & mentor</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm text-gray-700" htmlFor="project-title">Project Title</label>
+                        <input
+                          id="project-title"
+                          value={projectTitleInput}
+                          onChange={(e) => setProjectTitleInput(e.target.value)}
+                          placeholder="Enter project title"
+                          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                        <label className="text-sm text-gray-700" htmlFor="project-description">Project Description</label>
+                        <textarea
+                          id="project-description"
+                          value={projectDescriptionInput}
+                          onChange={(e) => setProjectDescriptionInput(e.target.value)}
+                          placeholder="Short description (optional)"
+                          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm text-gray-700" htmlFor="mentor-select">Select Mentor (from this drive)</label>
+                        <select
+                          id="mentor-select"
+                          value={mentorChoices[0]}
+                          onChange={(e) => updateMentorChoice(0, e.target.value)}
+                          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        >
+                          <option value="">Choose a mentor</option>
+                          {filteredMentorsFor(0).map((m) => (
+                            <option key={m._id || m.id} value={m._id || m.id}>
+                              {m.name} {m.department ? `(${m.department})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500">Mentor choice is stored as preference; final allotment may still be handled by admin.</p>
+                        <label className="text-sm text-gray-700" htmlFor="mentor-select-2">2nd Preference (optional)</label>
+                        <select
+                          id="mentor-select-2"
+                          value={mentorChoices[1]}
+                          onChange={(e) => updateMentorChoice(1, e.target.value)}
+                          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        >
+                          <option value="">Choose a mentor</option>
+                          {filteredMentorsFor(1).map((m) => (
+                            <option key={m._id || m.id} value={m._id || m.id}>
+                              {m.name} {m.department ? `(${m.department})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <label className="text-sm text-gray-700" htmlFor="mentor-select-3">3rd Preference (optional)</label>
+                        <select
+                          id="mentor-select-3"
+                          value={mentorChoices[2]}
+                          onChange={(e) => updateMentorChoice(2, e.target.value)}
+                          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        >
+                          <option value="">Choose a mentor</option>
+                          {filteredMentorsFor(2).map((m) => (
+                            <option key={m._id || m.id} value={m._id || m.id}>
+                              {m.name} {m.department ? `(${m.department})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {(isLeader || isMember) && (
                   <div className="mt-6">
