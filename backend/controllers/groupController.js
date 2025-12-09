@@ -6,6 +6,12 @@ exports.createGroup = async (req, res, next) => {
   try {
     const { name, drive, maxMembers, mentorPreferences } = req.body;
     const driveDoc = await Drive.findById(drive);
+    
+    console.log('🎯 Creating group for drive:', drive);
+    console.log('📊 Drive found:', driveDoc ? 'YES' : 'NO');
+    console.log('📌 Drive status:', driveDoc?.status);
+    console.log('✅ Is active?:', driveDoc?.status === 'active');
+    
     if (!driveDoc || driveDoc.status !== 'active') {
       return res.status(400).json({
         success: false,

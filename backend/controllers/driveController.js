@@ -219,15 +219,24 @@ exports.updateDrive = async (req, res, next) => {
         message: 'Drive not found'
       });
     }
+    
+    console.log('🔄 Updating drive:', req.params.id);
+    console.log('📝 Update data:', req.body);
+    console.log('📌 Current status:', drive.status);
+    
     drive = await Drive.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
     });
+    
+    console.log('✅ Updated status:', drive.status);
+    
     res.status(200).json({
       success: true,
       data: drive
     });
   } catch (error) {
+    console.error('❌ Update drive error:', error);
     next(error);
   }
 };
