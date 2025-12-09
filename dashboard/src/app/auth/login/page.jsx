@@ -1,26 +1,24 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
-import { Card, CardBody, Button } from '@/components/UI';
+import { Card, CardBody } from '@/components/UI';
 
 export default function LoginPage() {
   const router = useRouter();
-  const qc = useQueryClient();
 
   async function handleRedirectByRole() {
     try {
       const res = await api.get('/auth/me');
-      const user = res.data || null;
+      const user = (res && (res.data || res.user || res)) || null;
       if (!user) {
         router.push('/auth/login');
         return;
       }
-      const role = user.role || 'student';
+      const role = user.activeRole || user.role || 'student';
       if (role === 'mentor') router.push('/mentor/dashboard');
       else if (role === 'admin') router.push('/admin/dashboard');
-      else router.push('/drives');
+      else router.push('/students/dashboard');
     } catch (e) {
       console.error('Redirect error:', e);
       router.push('/auth/login');
