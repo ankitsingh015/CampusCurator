@@ -10,7 +10,13 @@ export function useCurrentUser() {
       try {
         const res = await api.get('/auth/me');
         // backend might return { success, data } or direct user object
-        return res.data || res.user || res;
+        const payload = res.data || res.user || res;
+        if (payload?.activeRole) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cc_active_role', payload.activeRole);
+          }
+        }
+        return payload;
       } catch (err) {
         // ensure unauthorized leads to null so UI can handle it
         return null;

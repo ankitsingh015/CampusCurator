@@ -7,24 +7,11 @@ import { api } from './api';
 const TOKEN_KEY = 'cc_token';
 
 export async function login(email, password) {
-  const data = await api.post('/auth/login', { body: { email, password } });
-  // backend likely returns token and user
-  if (data && data.token) {
-    api.setToken(data.token);
-    localStorage.setItem(TOKEN_KEY, data.token);
-    return data.user || null;
-  }
-  return null;
+  throw new Error('Email/password login is disabled. Please use Google Sign-In.');
 }
 
 export async function register(payload) {
-  const data = await api.post('/auth/register', { body: payload });
-  if (data && data.token) {
-    api.setToken(data.token);
-    localStorage.setItem(TOKEN_KEY, data.token);
-    return data.user || null;
-  }
-  return null;
+  throw new Error('Registration via email/password is disabled. Please use Google Sign-In.');
 }
 
 export async function logout() {
