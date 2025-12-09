@@ -60,6 +60,21 @@ export default function DriveManagement({ params }) {
     }
   });
 
+  const regressStageMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/drives/${id}/regress-stage`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['drive', id] });
+      qc.invalidateQueries({ queryKey: ['driveProgress', id] });
+      alert('Stage regressed successfully!');
+    },
+    onError: (err) => {
+      alert(err.response?.data?.message || 'Failed to regress stage');
+    }
+  });
+
   const autoGroupMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post(`/groups/auto-group/${id}`);
@@ -89,6 +104,21 @@ export default function DriveManagement({ params }) {
     },
     onError: (err) => {
       alert(err.response?.data?.message || 'Failed to auto-allot mentors');
+    }
+  });
+
+  const unassignMentorMutation = useMutation({
+    mutationFn: async (groupId) => {
+      const res = await api.del(`/groups/${groupId}/mentor`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['driveGroups', id] });
+      qc.invalidateQueries({ queryKey: ['driveProgress', id] });
+      alert('Mentor unassigned successfully!');
+    },
+    onError: (err) => {
+      alert(err.response?.data?.message || 'Failed to unassign mentor');
     }
   });
 
@@ -141,13 +171,24 @@ export default function DriveManagement({ params }) {
               <div className="mt-6 p-4 bg-blue-50 rounded border border-blue-100">
                 <p className="font-medium text-gray-900 mb-2">Current Stage: {drive.currentStage}</p>
                 <p className="text-sm text-gray-700 mb-4">Status: {drive.status}</p>
-                <button
-                  onClick={() => progressStageMutation.mutate()}
-                  disabled={progressStageMutation.isPending}
-                  className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50 font-medium"
-                >
-                  {progressStageMutation.isPending ? 'Processing...' : 'Progress to Next Stage'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => regressStageMutation.mutate()}
+                    disabled={regressStageMutation.isPending || drive.currentStage === 'group-formation'}
+                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    title={drive.currentStage === 'group-formation' ? 'Already at first stage' : 'Go back to previous stage'}
+                  >
+                    {regressStageMutation.isPending ? '⏳ Processing...' : '⬅️ Back to Previous Stage'}
+                  </button>
+                  <button
+                    onClick={() => progressStageMutation.mutate()}
+                    disabled={progressStageMutation.isPending || drive.currentStage === 'completed'}
+                    className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    title={drive.currentStage === 'completed' ? 'Already at final stage' : 'Move to next stage'}
+                  >
+                    {progressStageMutation.isPending ? '⏳ Processing...' : 'Progress to Next Stage ➡️'}
+                  </button>
+                </div>
               </div>
               </div>
             </section>        {/* Progress Metrics */}
@@ -252,20 +293,42 @@ export default function DriveManagement({ params }) {
             {groups?.map(g => (
               <div key={g._id} className="border p-4 rounded hover:bg-gray-50">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">{g.name}</h3>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{g.name}</h3>
                     <p className="text-sm text-gray-600">Project: {g.projectTitle || 'N/A'}</p>
                     <p className="text-sm text-gray-600">Members: {g.members?.length + 1 || 1}</p>
-                    <p className="text-sm text-gray-600">Mentor: {g.assignedMentor?.name || 'Not assigned'}</p>
+                    <p className="text-sm text-gray-600">Leader: {g.leader?.name || g.leader?.email}</p>
+                    <p className="text-sm text-gray-600 font-medium">Mentor: {g.assignedMentor?.name || 'Not assigned'}</p>
                     <p className="text-xs text-gray-500 mt-1">Created: {new Date(g.createdAt).toLocaleString()}</p>
                   </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded ${
-                    g.status === 'mentor-assigned' ? 'bg-green-100 text-green-800' :
-                    g.status === 'formed' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {g.status}
-                  </span>
+                  <div className="flex items-start gap-2">
+                    <span className={`text-xs font-medium px-3 py-1 rounded ${
+                      g.status === 'mentor-assigned' ? 'bg-green-100 text-green-800' :
+                      g.status === 'formed' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {g.status === 'mentor-assigned' ? 'Mentor Assigned' : g.status === 'formed' ? 'Awaiting Mentor' : g.status}
+                    </span>
+                    <Link href={`/drives/${id}?group=${g._id}`}>
+                      <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium" title="View Group">
+                        View
+                      </button>
+                    </Link>
+                    {g.assignedMentor && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Unassign mentor "${g.assignedMentor.name}" from group "${g.name}"?`)) {
+                            unassignMentorMutation.mutate(g._id);
+                          }
+                        }}
+                        disabled={unassignMentorMutation.isPending}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Unassign Mentor"
+                      >
+                        {unassignMentorMutation.isPending ? '⏳' : 'Unassign Mentor'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

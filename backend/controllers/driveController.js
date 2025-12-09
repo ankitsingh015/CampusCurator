@@ -611,6 +611,88 @@ exports.progressStage = async (req, res, next) => {
 };
 
 /**
+ * Regress drive stage (go back to previous stage)
+ */
+exports.regressStage = async (req, res, next) => {
+  try {
+    const drive = await Drive.findById(req.params.id);
+    if (!drive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Drive not found'
+      });
+    }
+
+    const currentStage = drive.currentStage;
+    
+    // Define stage order
+    const stageOrder = [
+      'group-formation',
+      'mentor-allotment',
+      'synopsis',
+      'checkpoints',
+      'result',
+      'completed'
+    ];
+
+    const currentIndex = stageOrder.indexOf(currentStage);
+    
+    if (currentIndex <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Already at the first stage. Cannot go back further.'
+      });
+    }
+
+    const previousStage = stageOrder[currentIndex - 1];
+    
+    // Update drive stage
+    drive.currentStage = previousStage;
+    
+    // Update stage statuses
+    if (previousStage === 'group-formation') {
+      drive.stages.groupFormation.status = 'active';
+      drive.stages.mentorAllotment.status = 'not-started';
+    } else if (previousStage === 'mentor-allotment') {
+      drive.stages.mentorAllotment.status = 'active';
+      drive.stages.synopsisSubmission.status = 'not-started';
+    } else if (previousStage === 'synopsis') {
+      drive.stages.synopsisSubmission.status = 'active';
+      // Reset checkpoint statuses
+      if (drive.stages.checkpoints && drive.stages.checkpoints.length > 0) {
+        drive.stages.checkpoints.forEach(cp => cp.status = 'not-started');
+      }
+    } else if (previousStage === 'checkpoints') {
+      if (drive.stages.checkpoints && drive.stages.checkpoints.length > 0) {
+        drive.stages.checkpoints[0].status = 'active';
+      }
+      if (drive.stages.result) {
+        drive.stages.result.status = 'not-started';
+      }
+    } else if (previousStage === 'result') {
+      if (drive.stages.result) {
+        drive.stages.result.status = 'active';
+      }
+    }
+
+    await drive.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Drive regressed from ${currentStage} to ${previousStage}`,
+      data: {
+        previousStage: currentStage,
+        currentStage: drive.currentStage,
+        stages: drive.stages
+      }
+    });
+  } catch (error) {
+    console.error('Error in regressStage:', error);
+    next(error);
+  }
+};
+
+/**
  * Get drive statistics
  */
 exports.getDriveStats = async (req, res, next) => {

@@ -21,6 +21,7 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState(null);
   const [activateError, setActivateError] = useState(null);
+  const [statusChangeError, setStatusChangeError] = useState(null);
 
   const { data: drives, isLoading: drivesLoading } = useQuery({
     queryKey: ['allDrives'],
@@ -64,6 +65,21 @@ export default function AdminDashboard() {
     }
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ driveId, status }) => {
+      const res = await api.put(`/drives/${driveId}`, { body: { status } });
+      return res.data || res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allDrives'] });
+      queryClient.invalidateQueries({ queryKey: ['driveStats'] });
+      setStatusChangeError(null);
+    },
+    onError: (error) => {
+      setStatusChangeError(error.message || 'Failed to update status');
+    }
+  });
+
   const handleDelete = (driveId, driveName, e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -77,6 +93,21 @@ export default function AdminDashboard() {
     e.stopPropagation();
     if (confirm(`Activate "${driveName}"?\n\nThis will make the drive visible to all students and allow them to submit their work.`)) {
       activateMutation.mutate(driveId);
+    }
+  };
+
+  const handleStatusChange = (driveId, driveName, newStatus, currentStatus) => {
+    if (newStatus === currentStatus) return;
+    
+    const statusMessages = {
+      'draft': 'Draft - Drive will be hidden from students',
+      'active': 'Active - Drive will be visible to students',
+      'inactive': 'Inactive - Drive will be archived and read-only',
+      'completed': 'Completed - Drive is finished'
+    };
+
+    if (confirm(`Change "${driveName}" status to ${newStatus.toUpperCase()}?\n\n${statusMessages[newStatus]}`)) {
+      updateStatusMutation.mutate({ driveId, status: newStatus });
     }
   };
 
@@ -153,6 +184,18 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {statusChangeError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-6">
+                <p className="text-red-700 font-medium">Status update failed: {statusChangeError}</p>
+                <button 
+                  onClick={() => setStatusChangeError(null)}
+                  className="text-sm text-red-600 underline mt-2"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
           {/* Drives Section */}
           <Card>
             <CardHeader>
@@ -188,9 +231,25 @@ export default function AdminDashboard() {
                           <p className="text-sm text-gray-600 mt-1">{drive.description}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <Badge variant={drive.status === 'active' ? 'success' : drive.status === 'completed' ? 'info' : 'warning'}>
-                            {drive.status.charAt(0).toUpperCase() + drive.status.slice(1)}
-                          </Badge>
+                          <select
+                            value={drive.status}
+                            onChange={(e) => handleStatusChange(drive._id, drive.name, e.target.value, drive.status)}
+                            disabled={updateStatusMutation.isPending}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                              drive.status === 'active' 
+                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
+                                : drive.status === 'completed'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                : drive.status === 'inactive'
+                                ? 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'
+                            }`}
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="completed">Completed</option>
+                          </select>
                         </td>
                         <td className="px-4 py-4">
                           <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
@@ -201,30 +260,19 @@ export default function AdminDashboard() {
                           {drive.academicYear}
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex gap-2">
-                            {drive.status === 'draft' && (
-                              <button
-                                onClick={(e) => handleActivate(drive._id, drive.name, e)}
-                                disabled={activateMutation.isPending}
-                                className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                                title="Activate Drive"
-                              >
-                                {activateMutation.isPending && activateMutation.variables === drive._id ? '⏳' : '✓ Activate'}
-                              </button>
-                            )}
+                          <div className="flex gap-2 items-center">
                             <Link href={`/admin/drives/${drive._id}/manage`}>
-                              <Button variant="outline" size="sm">Manage</Button>
-                            </Link>
-                            <Link href={`/drives/${drive._id}`}>
-                              <Button variant="secondary" size="sm">View</Button>
+                              <button className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition text-sm font-medium" title="Manage Drive">
+                                ⚙️ Manage
+                              </button>
                             </Link>
                             <button
                               onClick={(e) => handleDelete(drive._id, drive.name, e)}
                               disabled={deleteMutation.isPending}
-                              className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                               title="Delete Drive"
                             >
-                              {deleteMutation.isPending && deleteMutation.variables === drive._id ? '⏳' : '🗑️'}
+                              {deleteMutation.isPending && deleteMutation.variables === drive._id ? '⏳ Deleting...' : '🗑️ Delete'}
                             </button>
                           </div>
                         </td>

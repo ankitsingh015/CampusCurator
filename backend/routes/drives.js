@@ -8,7 +8,8 @@ const {
   getDriveStats,
   uploadParticipants,
   getDriveProgress,
-  progressStage
+  progressStage,
+  regressStage
 } = require('../controllers/driveController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -27,6 +28,10 @@ router
 router
   .route('/:id/progress-stage')
   .post(protect, authorize('admin'), progressStage);
+
+router
+  .route('/:id/regress-stage')
+  .post(protect, authorize('admin'), regressStage);
 
 // Upload participants (students/mentors) via CSV/Excel
 router

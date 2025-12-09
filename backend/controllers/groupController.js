@@ -373,6 +373,52 @@ exports.allotMentor = async (req, res, next) => {
     next(error);
   }
 };
+exports.unassignMentor = async (req, res, next) => {
+  try {
+    console.log('🔄 Unassigning mentor from group:', req.params.id);
+    
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      console.log('❌ Group not found:', req.params.id);
+      return res.status(404).json({
+        success: false,
+        message: 'Group not found'
+      });
+    }
+
+    console.log('📊 Current group status:', {
+      name: group.name,
+      assignedMentor: group.assignedMentor,
+      status: group.status
+    });
+
+    if (!group.assignedMentor) {
+      console.log('⚠️ No mentor assigned to this group');
+      return res.status(400).json({
+        success: false,
+        message: 'No mentor assigned to this group'
+      });
+    }
+
+    group.assignedMentor = null;
+    group.mentorAllottedAt = null;
+    group.mentorAllottedBy = null;
+    group.status = 'formed';
+    await group.save();
+
+    console.log('✅ Mentor unassigned successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Mentor unassigned successfully',
+      data: group
+    });
+  } catch (error) {
+    console.error('❌ Error unassigning mentor:', error);
+    next(error);
+  }
+};
+
 exports.autoAllotMentors = async (req, res, next) => {
   try {
     const drive = await Drive.findById(req.params.driveId);

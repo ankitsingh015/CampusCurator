@@ -105,6 +105,20 @@ export default function DriveDetail({ params }) {
     }
   });
 
+  const unassignMentorMutation = useMutation({
+    mutationFn: async (groupId) => {
+      const res = await api.del(`/groups/${groupId}/mentor`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['driveGroups', id] });
+      alert('Mentor unassigned successfully!');
+    },
+    onError: (err) => {
+      alert('Error: ' + (err.message || 'Failed to unassign mentor'));
+    }
+  });
+
   const handleAssignMentor = async () => {
     if (!selectedGroupForMentor || !selectedMentor) {
       alert('Please select both group and mentor');
@@ -321,6 +335,12 @@ export default function DriveDetail({ params }) {
                               <p className="text-sm text-gray-600">Project: {g.projectTitle || 'N/A'}</p>
                               <p className="text-sm text-gray-600">Members: {(g.members?.length || 0) + 1} / {g.maxMembers || 4}</p>
                               <p className="text-sm text-gray-600">Leader: {g.leaderName || g.leader?.name || 'Unknown'}</p>
+                              {g.assignedMentor && (
+                                <p className="text-sm text-gray-600 font-medium">Mentor: {g.assignedMentor.name}</p>
+                              )}
+                              {!g.assignedMentor && (
+                                <p className="text-sm text-yellow-600 font-medium">Mentor: Not assigned</p>
+                              )}
                               {(g.invitationCode || g.inviteCode) && (
                                 <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
                                   <p className="text-xs text-blue-600 font-semibold mb-1">Invite Code:</p>
@@ -336,6 +356,19 @@ export default function DriveDetail({ params }) {
                                   alert('Invite code copied to clipboard!');
                                 }} className="text-blue-500 hover:text-blue-600 font-medium text-sm">
                                   Copy Code
+                                </button>
+                              )}
+                              {user?.role === 'admin' && g.assignedMentor && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Unassign mentor "${g.assignedMentor.name}" from group "${g.name}"?`)) {
+                                      unassignMentorMutation.mutate(g._id);
+                                    }
+                                  }}
+                                  disabled={unassignMentorMutation.isPending}
+                                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {unassignMentorMutation.isPending ? '⏳ Unassigning...' : 'Unassign Mentor'}
                                 </button>
                               )}
                             </div>
