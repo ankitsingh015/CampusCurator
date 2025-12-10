@@ -41,6 +41,23 @@ export default function AdminDashboard() {
     enabled: !!user
   });
 
+  // Per-drive submission stats (groups submitted and status counts per type)
+  const driveIds = Array.isArray(drives) ? drives.map(d => d._id) : [];
+  const { data: submissionStats, isLoading: submissionStatsLoading } = useQuery({
+    queryKey: ['submissionStats', driveIds],
+    queryFn: async () => {
+      if (!driveIds.length) return {};
+      const entries = await Promise.all(
+        driveIds.map(async (id) => {
+          const res = await api.get(`/submissions/stats/${id}`);
+          return [id, res.data?.data || res.data];
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+    enabled: !!user && driveIds.length > 0
+  });
+
   const deleteMutation = useMutation({
     mutationFn: deleteDrive,
     onSuccess: () => {
@@ -116,6 +133,31 @@ export default function AdminDashboard() {
   const activeDrives = drives?.filter(d => d.status === 'active').length || 0;
   const completedDrives = drives?.filter(d => d.status === 'completed').length || 0;
   const totalGroups = stats?.totalGroups || 0;
+
+  const formatSubmissionSummary = (driveId) => {
+    const summary = submissionStats?.[driveId];
+    if (!summary) return null;
+    const total = summary.totalGroups || 0;
+    const types = ['synopsis', 'logbook', 'report', 'ppt'];
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {types.map((type) => {
+          const submitted = summary.groupsSubmitted?.[type] || 0;
+          const statusCounts = summary.stats?.[type] || {};
+          const accepted = statusCounts.accepted || 0;
+          return (
+            <span
+              key={type}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-semibold"
+            >
+              {type.toUpperCase()}: {submitted}/{total}
+              {accepted > 0 && <Badge variant="success">{accepted} accepted</Badge>}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <ProtectedRole allowedRole="admin">
@@ -216,6 +258,7 @@ export default function AdminDashboard() {
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Drive Name</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Stage</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Submissions</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Year</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
                     </tr>
@@ -255,6 +298,13 @@ export default function AdminDashboard() {
                           <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                             {drive.currentStage?.replace('-', ' ').toUpperCase()}
                           </span>
+                        </td>
+                        <td className="px-4 py-4 text-gray-700">
+                          {submissionStatsLoading ? (
+                            <span className="text-sm text-gray-500">Loading...</span>
+                          ) : (
+                            formatSubmissionSummary(drive._id) || <span className="text-sm text-gray-500">No submissions yet</span>
+                          )}
                         </td>
                         <td className="px-4 py-4 text-gray-700">
                           {drive.academicYear}

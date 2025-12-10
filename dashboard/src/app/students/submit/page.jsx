@@ -12,7 +12,7 @@ export default function SubmitFile() {
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
   
-  // Stage 4: Synopsis submission states
+  // Stage 4: Synopsis / general file submission states
   const [submissionType, setSubmissionType] = useState('synopsis');
   const [file, setFile] = useState(null);
   const [description, setDescription] = useState('');
@@ -25,25 +25,29 @@ export default function SubmitFile() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Fetch user's group
-  const { data: groupData } = useQuery({
-    queryKey: ['myGroup'],
+  // Fetch user's groups (can belong to multiple drives)
+  const { data: myGroups } = useQuery({
+    queryKey: ['myGroups'],
     queryFn: async () => {
-      const res = await api.get('/groups/my-group');
-      return res.data;
+      const res = await api.get('/groups');
+      return res.data?.data || res.data || [];
     },
     enabled: !!user
   });
 
+  // Selected group
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const selectedGroup = myGroups?.find(g => g._id === selectedGroupId);
+
   // Fetch drive details
   const { data: driveData } = useQuery({
-    queryKey: ['driveDetails', groupData?.data?.drive?._id],
+    queryKey: ['driveDetails', selectedGroup?.drive?._id || selectedGroup?.drive],
     queryFn: async () => {
-      const driveId = groupData.data.drive._id || groupData.data.drive;
+      const driveId = selectedGroup.drive._id || selectedGroup.drive;
       const res = await api.get(`/drives/${driveId}`);
-      return res.data;
+      return res.data; // api returns { success, data }
     },
-    enabled: !!groupData?.data?.drive
+    enabled: !!selectedGroup?.drive
   });
 
   // Fetch existing checkpoint submissions (Stage 5)
@@ -53,8 +57,15 @@ export default function SubmitFile() {
       const res = await api.get('/checkpoints/my-submissions');
       return res.data;
     },
-    enabled: !!user && driveData?.data?.currentStage === 'checkpoints'
+    enabled: !!user && !!selectedGroup && driveData?.currentStage === 'checkpoints'
   });
+
+  // Default to first group when loaded
+  useEffect(() => {
+    if (!selectedGroupId && myGroups?.length) {
+      setSelectedGroupId(myGroups[0]._id);
+    }
+  }, [myGroups, selectedGroupId]);
 
   // Stage 4: Synopsis submission mutation
   const synopsisMutation = useMutation({
@@ -63,8 +74,8 @@ export default function SubmitFile() {
       formData.append('file', file);
       formData.append('submissionType', submissionType);
       formData.append('description', description);
-      formData.append('groupId', groupData.data._id);
-      formData.append('driveId', groupData.data.drive._id || groupData.data.drive);
+      formData.append('groupId', selectedGroup._id);
+      formData.append('driveId', selectedGroup.drive._id || selectedGroup.drive);
 
       return api.post('/submissions', { body: formData });
     },
@@ -85,8 +96,8 @@ export default function SubmitFile() {
   const checkpointMutation = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
-      formData.append('groupId', groupData.data._id);
-      formData.append('driveId', groupData.data.drive._id || groupData.data.drive);
+      formData.append('groupId', selectedGroup._id);
+      formData.append('driveId', selectedGroup.drive._id || selectedGroup.drive);
       formData.append('checkpointIndex', selectedCheckpoint.index);
       formData.append('title', title);
       formData.append('description', description);
@@ -127,6 +138,10 @@ export default function SubmitFile() {
 
   const handleSynopsisSubmit = (e) => {
     e.preventDefault();
+    if (!selectedGroup) {
+      setError('Please select a group');
+      return;
+    }
     if (!file) {
       setError('Please select a file');
       return;
@@ -161,7 +176,7 @@ export default function SubmitFile() {
   };
 
   // Determine which stage we're in
-  const currentStage = driveData?.data?.currentStage;
+  const currentStage = driveData?.currentStage;
   const isCheckpointStage = currentStage === 'checkpoints';
   const isSynopsisStage = currentStage === 'synopsis';
 
@@ -171,12 +186,12 @@ export default function SubmitFile() {
         <div className="w-full px-6 py-8">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              {isCheckpointStage ? 'Submit Checkpoint' : 'Submit Synopsis'}
+              {isCheckpointStage ? 'Submit Checkpoint' : 'Submit File'}
             </h1>
             <p className="text-gray-700 mb-8">
               {isCheckpointStage 
                 ? 'Upload your checkpoint submissions for evaluation'
-                : 'Upload your project synopsis for mentor review'}
+                : 'Upload synopsis, logbook, report, or presentation for review'}
             </p>
 
             {error && (
@@ -190,7 +205,30 @@ export default function SubmitFile() {
               </Alert>
             )}
 
-            {!groupData?.data ? (
+            {myGroups?.length ? (
+              <Card className="mb-6">
+                <CardBody>
+                  <label htmlFor="group-select" className="block text-sm font-semibold text-gray-900 mb-2">
+                    Select Group
+                  </label>
+                  <select
+                    id="group-select"
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none text-gray-900 bg-white"
+                  >
+                    <option value="">Choose your group</option>
+                    {myGroups.map(g => (
+                      <option key={g._id} value={g._id}>
+                        {g.name} {g.drive?.name ? `(${g.drive.name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </CardBody>
+              </Card>
+            ) : null}
+
+            {!myGroups?.length ? (
               <Card>
                 <CardBody>
                   <Alert variant="info">
@@ -198,7 +236,15 @@ export default function SubmitFile() {
                   </Alert>
                 </CardBody>
               </Card>
-            ) : !driveData?.data ? (
+            ) : !selectedGroup ? (
+              <Card>
+                <CardBody>
+                  <Alert variant="info">
+                    Select a group to continue.
+                  </Alert>
+                </CardBody>
+              </Card>
+            ) : !driveData ? (
               <Card>
                 <CardBody>
                   <Alert variant="info">
@@ -213,9 +259,9 @@ export default function SubmitFile() {
                 <Card className="mb-6">
                   <CardBody>
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Available Checkpoints</h2>
-                    {driveData.data.checkpoints?.length > 0 ? (
+                    {driveData.checkpoints?.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {driveData.data.checkpoints.map((checkpoint, index) => {
+                        {driveData.checkpoints.map((checkpoint, index) => {
                           const submission = getSubmissionStatus(index);
                           return (
                             <div
@@ -398,7 +444,7 @@ export default function SubmitFile() {
                 )}
               </>
             ) : (
-              // ===== STAGE 4: SYNOPSIS SUBMISSION =====
+              // ===== STAGE 4: FILE/SYNOPSIS SUBMISSION =====
               <Card>
                 <CardBody>
                   <form onSubmit={handleSynopsisSubmit} className="space-y-6">
@@ -470,7 +516,7 @@ export default function SubmitFile() {
                         variant="primary"
                         className="flex-1"
                       >
-                        {synopsisMutation.isPending ? 'Submitting...' : 'Submit Synopsis'}
+                        {synopsisMutation.isPending ? 'Submitting...' : `Submit ${submissionType === 'synopsis' ? 'Synopsis' : 'File'}`}
                       </Button>
                       <Button
                         type="button"

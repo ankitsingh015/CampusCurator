@@ -5,6 +5,7 @@ const {
   getSubmission,
   reviewSubmission,
   getSubmissionStats,
+  getDriveSubmissionProgress,
   markLateSubmission,
   deleteSubmission
 } = require('../controllers/submissionController');
@@ -19,6 +20,14 @@ router.get(
   protect,
   authorize('admin', 'mentor'),
   getSubmissionStats
+);
+
+// Per-group submission progress for a drive (admin/mentor)
+router.get(
+  '/progress/:driveId',
+  protect,
+  authorize('admin', 'mentor'),
+  getDriveSubmissionProgress
 );
 
 // Get all submissions (filtered by role)

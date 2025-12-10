@@ -42,6 +42,25 @@ export default function MentorDashboard() {
     enabled: !!user
   });
 
+  // Submission progress per drive (only groups assigned to mentor)
+  const driveIds = Array.from(new Set((assignedGroups || []).map(g => g.drive?._id || g.drive).filter(Boolean)));
+  const { data: driveProgress } = useQuery({
+    queryKey: ['mentorDriveProgress', driveIds],
+    queryFn: async () => {
+      if (!driveIds.length) return {};
+      const entries = await Promise.all(
+        driveIds.map(async (id) => {
+          const res = await api.get(`/submissions/progress/${id}`);
+          return [id, res.data?.data || res.data];
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+    enabled: !!user && driveIds.length > 0,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  });
+
   if (userLoading || groupsLoading) return <LoadingSpinner />;
 
   // Filter submissions to only show those from mentor's assigned groups
@@ -53,6 +72,21 @@ export default function MentorDashboard() {
   const acceptedSubmissions = filteredSubmissions.filter(s => s.status === 'accepted').length || 0;
   const submittedCount = filteredSubmissions.filter(s => s.status === 'submitted').length || 0;
   const pendingReviews = pendingSynopses?.length || 0;
+
+  const progressByGroup = {};
+  Object.values(driveProgress || {}).forEach(dp => {
+    (dp?.groups || []).forEach(g => {
+      progressByGroup[g.groupId?.toString()] = g.submissions || {};
+    });
+  });
+
+  const statusVariant = (status) => {
+    if (status === 'accepted') return 'success';
+    if (status === 'revision-requested') return 'warning';
+    if (status === 'submitted' || status === 'under-review') return 'info';
+    if (status === 'rejected') return 'danger';
+    return 'secondary';
+  };
 
   return (
     <ProtectedRole allowedRole="mentor">
@@ -133,6 +167,24 @@ export default function MentorDashboard() {
                             <p className="text-gray-600">Created</p>
                             <p className="font-semibold text-gray-900">{new Date(g.createdAt).toLocaleDateString()}</p>
                           </div>
+                        </div>
+
+                        {/* Submission progress chips */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {['synopsis', 'logbook', 'report', 'ppt'].map(type => {
+                            const submission = progressByGroup[g._id?.toString()]?.[type];
+                            const label = type.toUpperCase();
+                            if (!submission) {
+                              return (
+                                <Badge key={type} variant="secondary">{label}: Pending</Badge>
+                              );
+                            }
+                            return (
+                              <Badge key={type} variant={statusVariant(submission.status)}>
+                                {label}: {submission.status}
+                              </Badge>
+                            );
+                          })}
                         </div>
 
                         <div className="flex gap-2">

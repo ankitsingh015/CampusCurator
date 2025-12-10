@@ -286,6 +286,25 @@ exports.getSubmissionStats = async (req, res, next) => {
       }
     ]);
 
+    // Count distinct groups that have submitted per submission type
+    const groupCounts = await Submission.aggregate([
+      { $match: { drive: drive._id } },
+      {
+        $group: {
+          _id: {
+            submissionType: '$submissionType',
+            group: '$group'
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.submissionType',
+          groupsSubmitted: { $sum: 1 }
+        }
+      }
+    ]);
+
     // Format stats by submission type
     const formattedStats = {};
     stats.forEach(stat => {
@@ -295,6 +314,11 @@ exports.getSubmissionStats = async (req, res, next) => {
       formattedStats[stat._id.submissionType][stat._id.status] = stat.count;
     });
 
+    const formattedGroupCounts = {};
+    groupCounts.forEach(item => {
+      formattedGroupCounts[item._id] = item.groupsSubmitted;
+    });
+
     // Get total groups for percentage calculation
     const totalGroups = await Group.countDocuments({ drive: driveId });
 
@@ -302,11 +326,119 @@ exports.getSubmissionStats = async (req, res, next) => {
       success: true,
       data: {
         stats: formattedStats,
+        groupsSubmitted: formattedGroupCounts,
         totalGroups,
         drive: {
           name: drive.name,
           currentStage: drive.currentStage
         }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Drive-wide submission progress (per group, per submission type)
+ * Admin: all groups in drive; Mentor: only assigned groups
+ */
+exports.getDriveSubmissionProgress = async (req, res, next) => {
+  try {
+    const { driveId } = req.params;
+
+    const drive = await Drive.findById(driveId);
+    if (!drive) {
+      return res.status(404).json({ success: false, message: 'Drive not found' });
+    }
+
+    const groupQuery = { drive: driveId };
+    if (req.user.role === 'mentor') {
+      groupQuery.assignedMentor = req.user.id;
+    }
+
+    const groups = await Group.find(groupQuery)
+      .select('_id name projectTitle assignedMentor status');
+
+    if (!groups.length) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          drive: { id: drive.id, name: drive.name, currentStage: drive.currentStage },
+          groups: [],
+          summary: {}
+        }
+      });
+    }
+
+    const groupIds = groups.map(g => g._id);
+
+    // Get latest submission per group per submissionType
+    const submissions = await Submission.aggregate([
+      { $match: { drive: drive._id, group: { $in: groupIds } } },
+      { $sort: { submittedAt: -1, createdAt: -1 } },
+      {
+        $group: {
+          _id: { group: '$group', submissionType: '$submissionType' },
+          status: { $first: '$status' },
+          submittedAt: { $first: '$submittedAt' },
+          reviewedAt: { $first: '$reviewedAt' },
+          version: { $first: '$version' },
+          isLateSubmission: { $first: '$isLateSubmission' }
+        }
+      }
+    ]);
+
+    // Build per-group progress map
+    const progressMap = {};
+    groups.forEach(g => {
+      progressMap[g._id.toString()] = {
+        groupId: g._id,
+        name: g.name,
+        projectTitle: g.projectTitle,
+        status: g.status,
+        submissions: {}
+      };
+    });
+
+    const summary = {};
+
+    submissions.forEach(item => {
+      const groupId = item._id.group.toString();
+      const type = item._id.submissionType;
+
+      if (!progressMap[groupId]) return;
+
+      progressMap[groupId].submissions[type] = {
+        status: item.status,
+        submittedAt: item.submittedAt,
+        reviewedAt: item.reviewedAt,
+        version: item.version,
+        isLateSubmission: item.isLateSubmission
+      };
+
+      // Build summary per submission type
+      if (!summary[type]) {
+        summary[type] = {
+          groupsSubmitted: new Set(),
+          statusCounts: {}
+        };
+      }
+      summary[type].groupsSubmitted.add(groupId);
+      summary[type].statusCounts[item.status] = (summary[type].statusCounts[item.status] || 0) + 1;
+    });
+
+    // Convert Set counts to numbers
+    Object.keys(summary).forEach(type => {
+      summary[type].groupsSubmitted = summary[type].groupsSubmitted.size;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        drive: { id: drive.id, name: drive.name, currentStage: drive.currentStage },
+        groups: Object.values(progressMap),
+        summary
       }
     });
   } catch (error) {
