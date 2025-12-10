@@ -10,15 +10,16 @@ const evaluationSchema = new mongoose.Schema({
     ref: 'Drive',
     required: true
   },
+  // Either checkpointSubmission or submission should be present
   checkpointSubmission: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'CheckpointSubmission',
-    required: true
+    ref: 'CheckpointSubmission'
   },
-  checkpointIndex: {
-    type: Number,
-    required: true
+  submission: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Submission'
   },
+  checkpointIndex: Number,
   evaluatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -91,4 +92,5 @@ evaluationSchema.pre('save', function(next) {
 evaluationSchema.index({ group: 1, checkpointIndex: 1 });
 evaluationSchema.index({ drive: 1 });
 evaluationSchema.index({ evaluatedBy: 1 });
+evaluationSchema.index({ submission: 1 });
 module.exports = mongoose.model('Evaluation', evaluationSchema);

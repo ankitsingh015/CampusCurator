@@ -1,5 +1,6 @@
 const Evaluation = require('../models/Evaluation');
 const CheckpointSubmission = require('../models/CheckpointSubmission');
+const Submission = require('../models/Submission');
 const Group = require('../models/Group');
 
 /**
@@ -24,60 +25,76 @@ exports.createEvaluation = async (req, res, next) => {
   try {
     const {
       checkpointSubmissionId,
+      submissionId,
       criteriaScores,
+      score,
+      maxScore,
       feedback,
       strengths,
       improvements
     } = req.body;
+    let targetSubmission = null;
+    let group = null;
+    let drive = null;
+    let checkpointIndex = null;
 
-    // Validate checkpoint submission
-    const submission = await CheckpointSubmission.findById(checkpointSubmissionId)
-      .populate('group');
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Checkpoint submission not found'
-      });
+    if (checkpointSubmissionId) {
+      targetSubmission = await CheckpointSubmission.findById(checkpointSubmissionId).populate('group');
+      if (!targetSubmission) {
+        return res.status(404).json({ success: false, message: 'Checkpoint submission not found' });
+      }
+      group = targetSubmission.group;
+      drive = targetSubmission.drive;
+      checkpointIndex = targetSubmission.checkpointIndex;
+    } else if (submissionId) {
+      targetSubmission = await Submission.findById(submissionId).populate('group');
+      if (!targetSubmission) {
+        return res.status(404).json({ success: false, message: 'Submission not found' });
+      }
+      group = targetSubmission.group;
+      drive = targetSubmission.drive;
+    } else {
+      return res.status(400).json({ success: false, message: 'Provide checkpointSubmissionId or submissionId' });
     }
 
-    // Verify mentor is assigned to this group
-    const group = submission.group;
+    if (!group) {
+      return res.status(400).json({ success: false, message: 'Group not found for submission' });
+    }
+
     if (group.assignedMentor?.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not the assigned mentor for this group'
-      });
+      return res.status(403).json({ success: false, message: 'You are not the assigned mentor for this group' });
     }
 
-    // Check if evaluation already exists
     const existingEvaluation = await Evaluation.findOne({
-      checkpointSubmission: checkpointSubmissionId
+      $or: [
+        checkpointSubmissionId ? { checkpointSubmission: checkpointSubmissionId } : null,
+        submissionId ? { submission: submissionId } : null
+      ].filter(Boolean)
     });
 
     if (existingEvaluation) {
-      return res.status(400).json({
-        success: false,
-        message: 'Evaluation already exists for this submission. Use update endpoint instead.'
-      });
+      return res.status(400).json({ success: false, message: 'Evaluation already exists for this submission. Use update endpoint instead.' });
     }
 
-    // Calculate totals
-    const totalMarks = criteriaScores.reduce((sum, c) => sum + c.score, 0);
-    const maxMarks = criteriaScores.reduce((sum, c) => sum + c.maxScore, 0);
-    const percentage = (totalMarks / maxMarks) * 100;
+    const derivedCriteria = criteriaScores && criteriaScores.length
+      ? criteriaScores
+      : [{ criteriaName: 'Overall', maxScore: maxScore || 100, score: score ?? 0 }];
+
+    const totalMarks = derivedCriteria.reduce((sum, c) => sum + c.score, 0);
+    const maxMarksTotal = derivedCriteria.reduce((sum, c) => sum + c.maxScore, 0);
+    const percentage = maxMarksTotal > 0 ? (totalMarks / maxMarksTotal) * 100 : 0;
     const grade = calculateGrade(percentage);
 
-    // Create evaluation
     const evaluation = await Evaluation.create({
       group: group._id,
-      drive: submission.drive,
-      checkpointSubmission: checkpointSubmissionId,
-      checkpointIndex: submission.checkpointIndex,
+      drive,
+      checkpointSubmission: checkpointSubmissionId || undefined,
+      submission: submissionId || undefined,
+      checkpointIndex,
       evaluatedBy: req.user.id,
-      criteriaScores,
+      criteriaScores: derivedCriteria,
       totalMarks,
-      maxMarks,
+      maxMarks: maxMarksTotal,
       percentage,
       grade,
       feedback,
@@ -87,17 +104,17 @@ exports.createEvaluation = async (req, res, next) => {
       isVisible: false
     });
 
-    // Update submission status
-    submission.status = 'under-evaluation';
-    await submission.save();
+    if (checkpointSubmissionId && targetSubmission) {
+      targetSubmission.status = 'under-evaluation';
+      await targetSubmission.save();
+    } else if (submissionId && targetSubmission && targetSubmission.status !== 'accepted') {
+      targetSubmission.status = 'under-review';
+      await targetSubmission.save();
+    }
 
-    await evaluation.populate('group evaluatedBy checkpointSubmission');
+    await evaluation.populate('group evaluatedBy checkpointSubmission submission');
 
-    res.status(201).json({
-      success: true,
-      message: 'Evaluation created successfully',
-      data: evaluation
-    });
+    res.status(201).json({ success: true, message: 'Evaluation created successfully', data: evaluation });
   } catch (error) {
     next(error);
   }
@@ -113,7 +130,8 @@ exports.getEvaluation = async (req, res, next) => {
       .populate('group', 'name projectTitle')
       .populate('drive', 'name')
       .populate('evaluatedBy', 'name email department')
-      .populate('checkpointSubmission');
+      .populate('checkpointSubmission')
+      .populate('submission');
 
     if (!evaluation) {
       return res.status(404).json({
@@ -150,7 +168,9 @@ exports.updateEvaluation = async (req, res, next) => {
       feedback,
       strengths,
       improvements,
-      status
+      status,
+      score,
+      maxScore
     } = req.body;
 
     let evaluation = await Evaluation.findById(req.params.id);
@@ -171,10 +191,22 @@ exports.updateEvaluation = async (req, res, next) => {
     }
 
     // Update criteria scores and recalculate
+    let derivedCriteria = null;
     if (criteriaScores) {
-      evaluation.criteriaScores = criteriaScores;
-      evaluation.totalMarks = criteriaScores.reduce((sum, c) => sum + c.score, 0);
-      evaluation.maxMarks = criteriaScores.reduce((sum, c) => sum + c.maxScore, 0);
+      derivedCriteria = criteriaScores;
+    }
+    if (score !== undefined || maxScore !== undefined) {
+      derivedCriteria = [{
+        criteriaName: 'Overall',
+        score: score ?? evaluation.totalMarks ?? 0,
+        maxScore: maxScore ?? evaluation.maxMarks ?? 100
+      }];
+    }
+
+    if (derivedCriteria) {
+      evaluation.criteriaScores = derivedCriteria;
+      evaluation.totalMarks = derivedCriteria.reduce((sum, c) => sum + (c.score || 0), 0);
+      evaluation.maxMarks = derivedCriteria.reduce((sum, c) => sum + (c.maxScore || 0), 0) || 100;
       evaluation.percentage = (evaluation.totalMarks / evaluation.maxMarks) * 100;
       evaluation.grade = calculateGrade(evaluation.percentage);
     }
@@ -187,7 +219,7 @@ exports.updateEvaluation = async (req, res, next) => {
     evaluation.evaluatedAt = new Date();
 
     await evaluation.save();
-    await evaluation.populate('group evaluatedBy checkpointSubmission');
+    await evaluation.populate('group evaluatedBy checkpointSubmission submission');
 
     res.status(200).json({
       success: true,
@@ -206,7 +238,8 @@ exports.updateEvaluation = async (req, res, next) => {
 exports.finalizeEvaluation = async (req, res, next) => {
   try {
     const evaluation = await Evaluation.findById(req.params.id)
-      .populate('checkpointSubmission');
+      .populate('checkpointSubmission')
+      .populate('submission');
 
     if (!evaluation) {
       return res.status(404).json({
@@ -228,9 +261,14 @@ exports.finalizeEvaluation = async (req, res, next) => {
     await evaluation.save();
 
     // Update checkpoint submission status
-    const submission = evaluation.checkpointSubmission;
-    if (submission) {
+    if (evaluation.checkpointSubmission) {
+      const submission = evaluation.checkpointSubmission;
       submission.status = 'evaluated';
+      await submission.save();
+    }
+    if (evaluation.submission) {
+      const submission = evaluation.submission;
+      submission.status = 'accepted';
       await submission.save();
     }
 
@@ -260,7 +298,8 @@ exports.getGroupEvaluations = async (req, res, next) => {
     const evaluations = await Evaluation.find(filter)
       .sort({ checkpointIndex: 1 })
       .populate('evaluatedBy', 'name email department')
-      .populate('checkpointSubmission', 'title checkpointName');
+      .populate('checkpointSubmission', 'title checkpointName')
+      .populate('submission', 'submissionType title');
 
     res.status(200).json({
       success: true,
@@ -283,7 +322,8 @@ exports.getCheckpointEvaluation = async (req, res, next) => {
     })
       .populate('evaluatedBy', 'name email department')
       .populate('group', 'name projectTitle')
-      .populate('checkpointSubmission');
+      .populate('checkpointSubmission')
+      .populate('submission');
 
     if (!evaluation) {
       return res.status(404).json({
@@ -315,7 +355,7 @@ exports.getCheckpointEvaluation = async (req, res, next) => {
  */
 exports.getDriveEvaluations = async (req, res, next) => {
   try {
-    const { checkpointIndex } = req.query;
+    const { checkpointIndex, submissionType } = req.query;
 
     const filter = { drive: req.params.driveId };
     if (checkpointIndex !== undefined) {
@@ -326,12 +366,17 @@ exports.getDriveEvaluations = async (req, res, next) => {
       .sort({ checkpointIndex: 1, createdAt: -1 })
       .populate('group', 'name projectTitle')
       .populate('evaluatedBy', 'name email')
-      .populate('checkpointSubmission', 'title checkpointName');
+      .populate('checkpointSubmission', 'title checkpointName')
+      .populate('submission', 'submissionType title');
+
+    const filteredData = submissionType
+      ? evaluations.filter(ev => ev.submission?.submissionType === submissionType)
+      : evaluations;
 
     res.status(200).json({
       success: true,
-      count: evaluations.length,
-      data: evaluations
+      count: filteredData.length,
+      data: filteredData
     });
   } catch (error) {
     next(error);
@@ -346,28 +391,32 @@ exports.getMyEvaluations = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    // Find user's group
-    const group = await Group.findOne({
+    // Find all groups the student belongs to (leader or member, any status)
+    const groups = await Group.find({
       $or: [
         { leader: userId },
-        { 'members.student': userId, 'members.status': 'accepted' }
+        { 'members.student': userId }
       ]
-    });
+    }).select('_id');
 
-    if (!group) {
+    if (!groups || groups.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'You are not part of any group'
       });
     }
 
+    const groupIds = groups.map(g => g._id);
+
     const evaluations = await Evaluation.find({
-      group: group._id,
-      isVisible: true
+      group: { $in: groupIds },
+      $or: [{ isVisible: true }, { status: 'finalized' }]
     })
       .sort({ checkpointIndex: 1 })
       .populate('evaluatedBy', 'name email department')
-      .populate('checkpointSubmission', 'title checkpointName');
+      .populate('checkpointSubmission', 'title checkpointName')
+      .populate('submission', 'submissionType title')
+      .populate('drive', 'name');
 
     res.status(200).json({
       success: true,

@@ -1,52 +1,111 @@
 'use client';
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import ProtectedRole from '@/components/ProtectedRole';
-import { Card, CardHeader, CardBody, CardFooter, Badge, Button, FormInput, FormSelect, LoadingSpinner } from '@/components/UI';
+import { Card, CardHeader, CardBody, Badge, Button, LoadingSpinner, Alert } from '@/components/UI';
+
+const backendBase = (process.env.NEXT_PUBLIC_API_BASE || '').replace(/\/api$/, '');
+const buildFileUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return backendBase ? `${backendBase}${url}` : url;
+};
 
 export default function Evaluations() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
-  const [selectedGroup, setSelectedGroup] = useState('');
-  const [marks, setMarks] = useState('');
+  const qc = useQueryClient();
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState('');
+  const [editingEvaluationId, setEditingEvaluationId] = useState('');
+  const [score, setScore] = useState('');
+  const [maxScore, setMaxScore] = useState('100');
   const [feedback, setFeedback] = useState('');
-  const [evaluationType, setEvaluationType] = useState('checkpoint');
+  const [publish, setPublish] = useState(true);
+  const [error, setError] = useState('');
 
   const { data: groups, isLoading: groupsLoading } = useQuery({
     queryKey: ['mentorGroups'],
     queryFn: async () => {
       const res = await api.get('/groups');
       const myId = user?._id || user?.id;
-      return res.data?.filter(g => g.assignedMentor?._id === myId || g.assignedMentor === myId) || [];
+      const list = res.data?.data || res.data || [];
+      return list.filter(g => (g.assignedMentor?._id || g.assignedMentor)?.toString() === (myId || '').toString());
     },
     enabled: !!user
   });
 
-  const { data: submissions } = useQuery({
-    queryKey: ['pendingReviews'],
+  const { data: submissions, isLoading: submissionsLoading } = useQuery({
+    queryKey: ['mentorPendingSubmissions'],
     queryFn: async () => {
-      const res = await api.get('/submissions?status=under-review');
-      return res.data || [];
+      const res = await api.get('/submissions');
+      return res.data?.data || res.data || [];
     },
-    enabled: !!user
+    enabled: !!user,
+    refetchInterval: 8000,
+    onError: (err) => setError(err?.data?.message || err?.message || 'Unable to load submissions')
   });
+
+  const driveIds = useMemo(() => Array.from(new Set((groups || []).map(g => g.drive?._id || g.drive).filter(Boolean))), [groups]);
+
+  const { data: evalHistory, isLoading: evalHistoryLoading } = useQuery({
+    queryKey: ['mentorEvalHistory', driveIds],
+    queryFn: async () => {
+      if (!driveIds.length) return [];
+      const entries = await Promise.all(
+        driveIds.map(async (id) => {
+          const res = await api.get(`/evaluations/drive/${id}`);
+          return res.data?.data || res.data || [];
+        })
+      );
+      return entries.flat();
+    },
+    enabled: !!user && driveIds.length > 0
+  });
+
+  const evaluationMap = useMemo(() => {
+    const map = {};
+    (evalHistory || []).forEach(ev => {
+      const subId = ev.submission?._id || ev.submission;
+      if (subId) {
+        map[subId.toString()] = ev;
+      }
+    });
+    return map;
+  }, [evalHistory]);
 
   const evaluationMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post('/evaluations', {
-        groupId: selectedGroup,
-        totalMarks: parseInt(marks),
-        feedback,
-        type: evaluationType
-      });
-      return res.data;
+      const payload = {
+        submissionId: selectedSubmissionId,
+        score: Number(score),
+        maxScore: Number(maxScore) || 100,
+        feedback
+      };
+
+      let evalData;
+      if (editingEvaluationId) {
+        const res = await api.put(`/evaluations/${editingEvaluationId}`, { body: payload });
+        evalData = res.data?.data || res.data;
+      } else {
+        const res = await api.post('/evaluations', { body: payload });
+        evalData = res.data?.data || res.data;
+      }
+
+      if (publish && evalData?._id) {
+        await api.put(`/evaluations/${evalData._id}/finalize`);
+      }
+      return evalData;
     },
     onSuccess: () => {
-      setMarks('');
+      setScore('');
+      setMaxScore('100');
       setFeedback('');
-      setSelectedGroup('');
-      alert('Evaluation saved!');
+      setSelectedSubmissionId('');
+      setEditingEvaluationId('');
+      qc.invalidateQueries({ queryKey: ['mentorPendingSubmissions'] });
+      qc.invalidateQueries({ queryKey: ['mentorEvalHistory'] });
+      alert('Evaluation saved');
     },
     onError: (err) => {
       alert(err.response?.data?.message || 'Failed to save evaluation');
@@ -55,14 +114,20 @@ export default function Evaluations() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedGroup || !marks) {
-      alert('Please fill all required fields');
+    if (!selectedSubmissionId || !score) {
+      alert('Select a submission and enter score');
       return;
     }
     evaluationMutation.mutate();
   };
 
-  if (userLoading) return <LoadingSpinner />;
+  if (userLoading || groupsLoading || submissionsLoading) return <LoadingSpinner />;
+
+  const pendingList = useMemo(() => {
+    return (submissions || []).filter(s => s.status === 'accepted' && !evaluationMap[s._id]);
+  }, [submissions, evaluationMap]);
+
+  const selectedSubmission = pendingList.find(s => s._id === selectedSubmissionId);
 
   return (
     <ProtectedRole allowedRole="mentor">
@@ -78,31 +143,44 @@ export default function Evaluations() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Pending Submissions - Left */}
               <div className="lg:col-span-1">
-                {submissions && submissions.length > 0 && (
+                {error && (
+                  <Alert variant="danger" className="mb-4">{error}</Alert>
+                )}
+                {(!pendingList || pendingList.length === 0) && (
+                  <Card className="border border-dashed border-gray-300">
+                    <CardBody>
+                      <p className="text-sm text-gray-600">No accepted submissions found. Approve submissions first, then add marks.</p>
+                    </CardBody>
+                  </Card>
+                )}
+                {pendingList && pendingList.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <h2 className="text-xl font-bold">Pending Reviews</h2>
-                      <p className="text-gray-600 text-sm mt-1">{submissions.length} awaiting evaluation</p>
+                      <h2 className="text-xl font-bold">Accepted Submissions</h2>
+                      <p className="text-gray-600 text-sm mt-1">{pendingList.length} ready for marks</p>
                     </CardHeader>
                     <CardBody>
                       <div className="space-y-3">
-                        {submissions.map(s => (
+                        {pendingList.map(s => (
                           <div 
                             key={s._id}
-                            onClick={() => setSelectedGroup(s.group || s.groupId)}
+                            onClick={() => {
+                              setSelectedSubmissionId(s._id);
+                              setEditingEvaluationId('');
+                              setScore('');
+                              setMaxScore('100');
+                              setFeedback('');
+                            }}
                             className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                              selectedGroup === s.group || selectedGroup === s.groupId
+                              selectedSubmissionId === s._id
                                 ? 'border-orange-500 bg-orange-50'
                                 : 'border-gray-200 hover:border-gray-300'
                             }`}
                           >
                             <p className="font-semibold text-sm uppercase text-gray-700">
-                              {s.submissionType === 'logbook' && 'Logbook'}
-                              {s.submissionType === 'report' && 'Report'}
-                              {s.submissionType === 'ppt' && 'PPT'}
-                              {s.submissionType === 'code' && 'Code'}
+                              {s.submissionType ? s.submissionType.toUpperCase() : 'SUBMISSION'}
                             </p>
-                            <p className="text-xs text-gray-600 mt-1">{s.groupName}</p>
+                            <p className="text-xs text-gray-600 mt-1">{s.group?.name || 'Group'}</p>
                             <p className="text-xs text-gray-500 mt-2">
                               {new Date(s.submittedAt).toLocaleDateString()}
                             </p>
@@ -119,75 +197,101 @@ export default function Evaluations() {
                 <Card>
                   <CardHeader>
                     <h2 className="text-2xl font-bold text-gray-900">Enter Evaluation</h2>
-                    <p className="text-gray-600 mt-1">Fill in the evaluation details below</p>
+                    <p className="text-gray-600 mt-1">Select a pending submission, enter score, and publish.</p>
                   </CardHeader>
                   <CardBody>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                      {/* Group Selection */}
-                      <div>
-                        <label htmlFor="group-select" className="block text-sm font-semibold text-gray-900 mb-2">
-                          Select Group *
-                        </label>
-                        <select
-                          id="group-select"
-                          value={selectedGroup}
-                          onChange={(e) => setSelectedGroup(e.target.value)}
-                          required
-                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none text-gray-900 bg-white"
-                        >
-                          <option value="">Choose a group...</option>
-                          {groups?.map(g => (
-                            <option key={g._id} value={g._id}>
-                              {g.name} - {g.projectTitle}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Evaluation Type */}
-                      <div>
-                        <label htmlFor="eval-type" className="block text-sm font-semibold text-gray-900 mb-2">
-                          Evaluation Type
-                        </label>
-                        <select
-                          id="eval-type"
-                          value={evaluationType}
-                          onChange={(e) => setEvaluationType(e.target.value)}
-                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none text-gray-900 bg-white"
-                        >
-                          <option value="checkpoint">Checkpoint</option>
-                          <option value="midsem">Mid-Semester</option>
-                          <option value="endsem">End-Semester</option>
-                        </select>
-                      </div>
+                      {/* Selected submission details */}
+                      {selectedSubmission ? (
+                            <div className="p-4 rounded-lg border bg-gray-50">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="secondary">{selectedSubmission.submissionType?.toUpperCase() || 'SUBMISSION'}</Badge>
+                            <Badge variant="info">{selectedSubmission.group?.name || 'Group'}</Badge>
+                          </div>
+                          <p className="text-sm text-gray-700 mt-2">Submitted: {new Date(selectedSubmission.submittedAt).toLocaleString()}</p>
+                          {selectedSubmission[selectedSubmission.submissionType]?.fileUrl && (
+                            <a
+                              href={buildFileUrl(selectedSubmission[selectedSubmission.submissionType].fileUrl)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-orange-600 text-sm hover:underline mt-2 inline-block"
+                            >
+                              View File
+                            </a>
+                          )}
+                          {(!selectedSubmission[selectedSubmission.submissionType]?.fileUrl && selectedSubmission.additionalFiles?.length) && (
+                            <div className="mt-2 space-y-1">
+                              {selectedSubmission.additionalFiles.map((f, idx) => (
+                                <a
+                                  key={idx}
+                                  href={buildFileUrl(f.fileUrl)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-orange-600 text-sm hover:underline block"
+                                >
+                                  {f.fileName || 'Attachment'}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Alert variant="info">Select a submission from the left to evaluate.</Alert>
+                      )}
 
                       {/* Marks */}
                       <div>
-                        <label htmlFor="marks" className="block text-sm font-semibold text-gray-900 mb-2">
-                          Marks (0-100) *
+                        <label htmlFor="score" className="block text-sm font-semibold text-gray-900 mb-2">
+                          Score *
                         </label>
                         <div className="relative">
                           <input
-                            id="marks"
+                            id="score"
                             type="number"
-                            value={marks}
-                            onChange={(e) => setMarks(e.target.value)}
+                            value={score}
+                            onChange={(e) => setScore(e.target.value)}
                             required
                             min="0"
-                            max="100"
                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none"
-                            placeholder="Enter marks out of 100"
+                            placeholder="Score"
                           />
-                          <span className="absolute right-4 top-3.5 text-gray-600 font-semibold">/100</span>
                         </div>
-                        {marks && (
+                      </div>
+
+                      <div>
+                        <label htmlFor="max-score" className="block text-sm font-semibold text-gray-900 mb-2">
+                          Max Score *
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="max-score"
+                            type="number"
+                            value={maxScore}
+                            onChange={(e) => setMaxScore(e.target.value)}
+                            required
+                            min="1"
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none"
+                            placeholder="Max score"
+                          />
+                        </div>
+                        {score && maxScore && (
                           <div className="mt-2 text-sm">
                             <p className="text-gray-600">
-                              Percentage: <span className="font-semibold">{marks}%</span>
+                              Percentage: <span className="font-semibold">{((Number(score) / Number(maxScore || 100)) * 100).toFixed(2)}%</span>
                             </p>
                             <p className="text-gray-600">
-                              Grade: <span className={`font-semibold ${parseInt(marks) >= 80 ? 'text-green-600' : parseInt(marks) >= 60 ? 'text-blue-600' : 'text-orange-600'}`}>
-                                {parseInt(marks) >= 90 ? 'A+' : parseInt(marks) >= 80 ? 'A' : parseInt(marks) >= 70 ? 'B' : parseInt(marks) >= 60 ? 'C' : 'D'}
+                              Grade: <span className={`font-semibold ${Number(score) >= 80 ? 'text-green-600' : Number(score) >= 60 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                {(() => {
+                                  const pct = (Number(score) / Number(maxScore || 100)) * 100;
+                                  if (pct >= 90) return 'A+';
+                                  if (pct >= 80) return 'A';
+                                  if (pct >= 70) return 'B+';
+                                  if (pct >= 60) return 'B';
+                                  if (pct >= 50) return 'C+';
+                                  if (pct >= 40) return 'C';
+                                  if (pct >= 33) return 'D';
+                                  return 'F';
+                                })()}
                               </span>
                             </p>
                           </div>
@@ -209,6 +313,17 @@ export default function Evaluations() {
                         />
                       </div>
 
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="publish"
+                          type="checkbox"
+                          checked={publish}
+                          onChange={(e) => setPublish(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <label htmlFor="publish" className="text-sm text-gray-700">Publish to students (finalize)</label>
+                      </div>
+
                       {/* Submit */}
                       <Button
                         type="submit"
@@ -223,6 +338,64 @@ export default function Evaluations() {
                   </CardBody>
                 </Card>
               </div>
+            </div>
+
+            {/* Evaluation history */}
+            <div className="mt-8">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-xl font-bold text-gray-900">Recent Evaluations</h2>
+                  <p className="text-gray-600 text-sm">Published and draft evaluations for your groups</p>
+                </CardHeader>
+                <CardBody>
+                  {evalHistoryLoading ? (
+                    <LoadingSpinner />
+                  ) : evalHistory && evalHistory.length ? (
+                    <div className="grid gap-3">
+                      {evalHistory
+                        .slice()
+                        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+                        .map(ev => (
+                          <div key={ev._id} className="p-4 border rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900">{ev.submission?.submissionType?.toUpperCase() || `Checkpoint ${ev.checkpointIndex ?? ''}`}</span>
+                                <Badge variant={ev.isVisible ? 'success' : 'secondary'}>{ev.isVisible ? 'Published' : 'Draft'}</Badge>
+                                <Badge variant="info">{ev.group?.name || 'Group'}</Badge>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Score: {ev.totalMarks}/{ev.maxMarks} • Grade: {ev.grade || '—'} • Updated {new Date(ev.updatedAt || ev.createdAt || Date.now()).toLocaleString()}
+                              </p>
+                              {ev.feedback && <p className="text-sm text-gray-700 mt-1 italic">"{ev.feedback}"</p>}
+                            </div>
+                            {ev.submission && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => {
+                                    const existingScore = ev.totalMarks != null ? ev.totalMarks.toString() : '';
+                                    const existingMax = ev.maxMarks != null ? ev.maxMarks.toString() : '100';
+                                    setSelectedSubmissionId(ev.submission?._id || ev.submission);
+                                    setEditingEvaluationId(ev._id);
+                                    setScore(existingScore);
+                                    setMaxScore(existingMax);
+                                    setFeedback(ev.feedback || '');
+                                    setPublish(true);
+                                  }}
+                                >
+                                  Re-evaluate
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">No evaluations yet.</p>
+                  )}
+                </CardBody>
+              </Card>
             </div>
           </div>
         </div>

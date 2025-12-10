@@ -18,11 +18,55 @@ export default function Results() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [submissionError, setSubmissionError] = useState('');
 
-  const { data: results, isLoading } = useQuery({
+  const normalizeList = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (payload?.data && Array.isArray(payload.data)) return payload.data;
+    return [];
+  };
+
+  const { data: resultsRaw, isLoading: isLoadingResults } = useQuery({
     queryKey: ['myResults'],
     queryFn: async () => {
       const res = await api.get('/results');
-      return res.data || [];
+      return normalizeList(res);
+    },
+    enabled: !!user
+  });
+
+  // Fallback: direct evaluations if results aggregation not available
+  const { data: evalsFallbackRaw, isLoading: isLoadingFallback } = useQuery({
+    queryKey: ['myEvalFallback'],
+    queryFn: async () => {
+      const res = await api.get('/evaluations/my-evaluations');
+      const list = normalizeList(res);
+      return list.map(ev => {
+        const pct = ev.maxMarks ? (ev.totalMarks / ev.maxMarks) * 100 : 0;
+        const grade = (() => {
+          if (pct >= 90) return 'A+';
+          if (pct >= 80) return 'A';
+          if (pct >= 70) return 'B+';
+          if (pct >= 60) return 'B';
+          if (pct >= 50) return 'C+';
+          if (pct >= 40) return 'C';
+          if (pct >= 33) return 'D';
+          return 'F';
+        })();
+        return {
+          _id: ev._id,
+          groupName: ev.group?.name || 'Group',
+          driveName: ev.drive?.name || 'Drive',
+          grade,
+          status: ev.isVisible ? 'published' : ev.status || 'draft',
+          logbook_marks: ev.submission?.submissionType === 'logbook' ? ev.totalMarks : 0,
+          synopsis_marks: ev.submission?.submissionType === 'synopsis' ? ev.totalMarks : 0,
+          report_marks: ev.submission?.submissionType === 'report' ? ev.totalMarks : 0,
+          ppt_marks: ev.submission?.submissionType === 'ppt' ? ev.totalMarks : 0,
+          midsem_marks: ev.submission?.submissionType === 'midsem' ? ev.totalMarks : 0,
+          endsem_marks: ev.submission?.submissionType === 'endsem' ? ev.totalMarks : 0,
+          final_marks: ev.totalMarks || 0,
+          feedback: ev.feedback
+        };
+      });
     },
     enabled: !!user
   });
@@ -40,7 +84,12 @@ export default function Results() {
     }
   });
 
-  if (userLoading || isLoading) return <LoadingSpinner />;
+  const results = normalizeList(resultsRaw);
+  const evalsFallback = normalizeList(evalsFallbackRaw);
+
+  if (userLoading || (isLoadingResults && isLoadingFallback)) return <LoadingSpinner />;
+
+  const mergedResults = results.length ? results : (evalsFallback || []);
 
   const getGradeColor = (grade) => {
     if (!grade) return 'gray';
@@ -82,14 +131,14 @@ export default function Results() {
               <p className="text-gray-700 mt-2">View your final grades and performance feedback</p>
             </div>
 
-            {!results?.length ? (
+            {!mergedResults?.length ? (
               <EmptyState 
                 title="No Results Yet" 
                 message="Your results will appear here once all evaluations are completed and published"
               />
             ) : (
               <div className="grid gap-8">
-                {results.map(r => (
+                {mergedResults.map(r => (
                   <Card key={r._id} className="border-l-4 hover:shadow-lg transition-shadow" style={{borderLeftColor: getGradeColor(r.grade) === 'green' ? '#10b981' : getGradeColor(r.grade) === 'blue' ? '#3b82f6' : getGradeColor(r.grade) === 'yellow' ? '#f59e0b' : '#ef4444'}}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
